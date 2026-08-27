@@ -29,6 +29,21 @@ application, and the third enters its folder.
 
 ## 3. Install the application packages
 
+### TI colleagues: connect to VPN and configure the proxy
+
+Before installing packages:
+
+1. Make sure the TI company VPN is connected.
+2. Run these commands in PowerShell:
+
+```powershell
+npm config set proxy http://webproxy.ext.ti.com:80
+npm config set https-proxy http://webproxy.ext.ti.com:80
+```
+
+The package installation may fail if the VPN is disconnected or the proxy has
+not been configured.
+
 Run this once after cloning:
 
 ```powershell
