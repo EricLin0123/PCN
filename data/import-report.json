@@ -1,0 +1,16 @@
+{
+  "ti_source_rows_read": 33633,
+  "delta_source_rows_read": 883,
+  "unique_pcn_bases": 1473,
+  "unique_ti_parts": 5277,
+  "unique_delta_parts": 2025,
+  "pcn_to_ti_part_relationships": 11682,
+  "delta_forms_created": 883,
+  "delta_form_items_created": 4550,
+  "delta_only_pcn_bases": 9,
+  "invalid_pcn_numbers": 15,
+  "conflicting_ti_change_types": 0,
+  "total_pns_parsing_mismatches": 3,
+  "unresolved_affected_part_lines": 2,
+  "duplicate_records_skipped": 21951
+}

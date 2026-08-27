@@ -1,0 +1,42 @@
+=LET(
+p,TRIM('PCN Correspondence'!$A$2:$A$1286&""),
+s,UPPER(TRIM('PCN Correspondence'!$B$2:$B$1286&"")),
+r,UPPER(TRIM('PCN Correspondence'!$C$2:$C$1286&"")),
+f,UPPER(TRIM('PCN Correspondence'!$E$2:$E$1286&"")),
+a,'PCN Correspondence'!$T$2:$T$1286&"",
+raPcn,TRIM('RA index'!$B$2:$B$200&""),
+raOpn,'RA index'!$C$2:$C$200&"",
+u,UNIQUE(FILTER(p,p<>"")),
+classes,
+MAP(u,LAMBDA(x,
+LET(
+eol,SUM(--((p=x)*(((s="EOL")+(r="EOL"))>0)))>0,
+rejected,SUM(--((p=x)*(f="REJECT")))>0,
+pending,SUM(--((p=x)*(((s="NOT UPLOADED")+(s="PARTLY UPLOADED"))>0)))>0,
+allUploaded,SUM(--((p=x)*(s<>"ALL UPLOADED")))=0,
+processing,SUM(--((p=x)*(f="PROCESSING")))>0,
+completed,SUM(--((p=x)*(f="COMPLETE")))>0,
+pcnRisk,IF(SUM(--((p=x)*(r="MAJOR")))>0,"MAJOR",IF(SUM(--((p=x)*(r="MINOR")))>0,"MINOR","UNKNOWN")),
+affectedText,TEXTJOIN(CHAR(10),TRUE,FILTER(a,p=x,"")),
+lines,IFERROR(TOCOL(TEXTSPLIT(SUBSTITUTE(affectedText,CHAR(13),""),CHAR(10)),1),""),
+parts0,IFERROR(TEXTAFTER(TRIM(lines)," ",-1),""),
+parts,UNIQUE(FILTER(UPPER(TRIM(parts0)),parts0<>"","")),
+partCount,SUM(--(parts<>"")),
+raText,TEXTJOIN(";",TRUE,FILTER(raOpn,raPcn=x,"")),
+raTokens,IFERROR(UPPER(TRIM(TOCOL(TEXTSPLIT(SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(raText,CHAR(13),""),CHAR(10),";"),",",";"),";"),1))),""),
+covered,SUM(--ISNUMBER(XMATCH(parts,raTokens))*(parts<>"")),
+coverage,IF(partCount=0,"UNKNOWN",IF(covered=partCount,"FULL",IF(covered=0,"NONE","PARTIAL"))),
+IFS(
+eol,"Excluded",
+rejected,"Rejected – resolution required",
+AND(pending,pcnRisk="MINOR"),"Minor ready for upload",
+AND(pending,pcnRisk="MAJOR",coverage="FULL"),"Major ready for upload",
+AND(pending,pcnRisk="MAJOR"),"Major blocked by RA",
+AND(allUploaded,processing,pcnRisk="MINOR"),"Minor pending approval",
+AND(allUploaded,processing,pcnRisk="MAJOR"),"Major pending approval",
+AND(allUploaded,NOT(processing),completed),"Completed",
+TRUE,"Other"
+)
+))),
+SUM(--(classes=$B2))
+)

@@ -1,2 +1,8 @@
 ~*.xlsx
 .DS_Store
+node_modules/
+.nuxt/
+.output/
+data/pcn.db-wal
+data/pcn.db-shm
+*.log
