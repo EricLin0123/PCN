@@ -4,7 +4,9 @@ Local PCN tracking application for Windows. The application runs on your own
 laptop and stores changes in the included SQLite database. It does not require
 a shared server or access to the original Excel files.
 
-## 1. Install the prerequisites
+## 1. Bring up the application
+
+### Install the prerequisites
 
 Install these once:
 
@@ -14,7 +16,7 @@ Install these once:
 Use the default installation options. Restart Windows after installation if the
 commands below are not recognized.
 
-## 2. Download the application
+### Download the application
 
 Open **PowerShell**, then run:
 
@@ -24,25 +26,19 @@ git clone https://github.com/EricLin0123/PCN.git
 cd PCN
 ```
 
-The first command chooses the Documents folder. The second downloads the
-application, and the third enters its folder.
-
-## 3. Install the application packages
-
 ### TI colleagues: connect to VPN and configure the proxy
 
-Before installing packages:
-
-1. Make sure the TI company VPN is connected.
-2. Run these commands in PowerShell:
+Before installing packages, make sure the TI company VPN is connected. Then run:
 
 ```powershell
 npm config set proxy http://webproxy.ext.ti.com:80
 npm config set https-proxy http://webproxy.ext.ti.com:80
 ```
 
-The package installation may fail if the VPN is disconnected or the proxy has
-not been configured.
+Package installation may fail if the VPN is disconnected or the proxy has not
+been configured.
+
+### Install the application packages
 
 Run this once after cloning:
 
@@ -53,7 +49,7 @@ npm install
 No `.env` file or spreadsheet setup is required. The application uses
 `data/pcn.db` automatically.
 
-## 4. Start the application
+### Start the application
 
 From the `PCN` folder, run:
 
@@ -68,11 +64,9 @@ http://localhost:3000
 ```
 
 Open that address in Edge or Chrome. Keep the PowerShell window open while
-using the application.
+using the application. To stop it, return to PowerShell and press **Ctrl+C**.
 
-To stop the application, return to PowerShell and press **Ctrl+C**.
-
-## Starting it again later
+### Start it again later
 
 Open PowerShell and run:
 
@@ -82,6 +76,153 @@ npm run dev
 ```
 
 Then open [http://localhost:3000](http://localhost:3000).
+
+## 2. Application screenshots
+
+### PCN records
+
+![PCN records table](img/dashboard.PNG)
+
+### Overview dashboard
+
+![PCN overview dashboard](img/overview.PNG)
+
+## 3. Data architecture
+
+PCN Workbench uses a normalized SQLite schema with calculated operational views.
+The detailed reference is also available in [docs/data-schema.md](docs/data-schema.md).
+
+### Normalized entity relationships
+
+```mermaid
+erDiagram
+    CHANGE_TYPE ||--o{ PCN : classifies
+    PCN ||--o{ PCN_TI_PART : affects
+    TI_PART ||--o{ PCN_TI_PART : appears_in
+
+    PCN o|--o{ DELTA_FORM : matched_by_base
+    DELTA_FORM ||--o{ DELTA_FORM_ITEM : contains
+    DELTA_PART o|--o{ DELTA_FORM_ITEM : identifies
+
+    PCN ||--o{ RISK_ASSESSMENT : has
+    RISK_ASSESSMENT ||--o{ RISK_ASSESSMENT_TI_PART : covers
+    TI_PART ||--o{ RISK_ASSESSMENT_TI_PART : assessed_by
+
+    CHANGE_TYPE {
+        INTEGER id PK
+        TEXT name UK
+        TEXT default_risk
+    }
+
+    PCN {
+        INTEGER id PK
+        TEXT pcn_number_base UK
+        TEXT notification_date
+        TEXT title
+        INTEGER change_type_id FK
+        TEXT risk_override
+        TEXT notes
+    }
+
+    TI_PART {
+        INTEGER id PK
+        TEXT normalized_part_number UK
+        TEXT display_part_number
+    }
+
+    PCN_TI_PART {
+        INTEGER pcn_id PK,FK
+        INTEGER ti_part_id PK,FK
+    }
+
+    DELTA_FORM {
+        INTEGER id PK
+        INTEGER pcn_id FK
+        TEXT delta_pcn_number_base
+        TEXT delta_pcn_number_raw
+        TEXT delta_pcn_suffix
+        TEXT form_no UK
+        TEXT apply_date
+        TEXT notify
+        TEXT form_status
+        INTEGER total_pns
+    }
+
+    DELTA_PART {
+        INTEGER id PK
+        TEXT normalized_part_number UK
+        TEXT display_part_number
+    }
+
+    DELTA_FORM_ITEM {
+        INTEGER id PK
+        INTEGER delta_form_id FK
+        INTEGER sequence_number
+        INTEGER delta_part_id FK
+        TEXT ti_part_number_normalized
+        TEXT raw_line
+        TEXT parse_status
+    }
+
+    RISK_ASSESSMENT {
+        INTEGER id PK
+        TEXT ra_number UK
+        INTEGER pcn_id FK
+        TEXT pcn_number_base
+        TEXT workbook_filename
+    }
+
+    RISK_ASSESSMENT_TI_PART {
+        INTEGER risk_assessment_id PK,FK
+        INTEGER ti_part_id PK,FK
+    }
+```
+
+### Calculated operational model
+
+```mermaid
+flowchart LR
+    PCN[(pcn)]
+    CT[(change_type)]
+    PTP[(pcn_ti_part)]
+    TP[(ti_part)]
+    DF[(delta_form)]
+    DFI[(delta_form_item)]
+    RA[(risk_assessment)]
+    RAP[(risk_assessment_ti_part)]
+
+    UPLOAD[[pcn_upload_coverage]]
+    OPS[[pcn_operational_status]]
+    RAC[[pcn_ra_coverage]]
+    EXEC[[pcn_executive_status]]
+
+    PCN --> UPLOAD
+    PTP --> UPLOAD
+    TP --> UPLOAD
+    DF --> UPLOAD
+    DFI --> UPLOAD
+
+    PCN --> OPS
+    CT --> OPS
+    UPLOAD --> OPS
+    DF --> OPS
+
+    PCN --> RAC
+    CT --> RAC
+    UPLOAD --> RAC
+    RA --> RAC
+    RAP --> RAC
+
+    PCN --> EXEC
+    OPS --> EXEC
+    RAC --> EXEC
+    DF --> EXEC
+
+    UPLOAD --> U1["Upload coverage"]
+    OPS --> O1["Expected risk and Delta alignment"]
+    RAC --> R1["RA material coverage"]
+    EXEC --> E1["Executive action queue"]
+```
 
 ## Back up your data
 
@@ -142,6 +283,6 @@ the instructions above.
 - SQLite is the only runtime source of truth.
 - The application does not import or synchronize Excel/CSV files.
 - TI affected parts are read-only.
-- Do not delete or replace `data\pcn.db` without keeping a backup.
+- Do not delete or replace `data/pcn.db` without keeping a backup.
 - Do not run `git pull` after entering new data unless you have first backed up
-  `data\pcn.db`; database changes can conflict with repository updates.
+  `data/pcn.db`; database changes can conflict with repository updates.
