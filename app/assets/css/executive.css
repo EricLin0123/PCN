@@ -1,0 +1,40 @@
+.executive-total {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  padding: 14px 24px;
+  background: #172536;
+  color: #fff;
+  border-bottom: 1px solid #000;
+}
+
+.executive-total span { font-size: 14px; font-weight: 700; text-transform: uppercase; }
+.executive-total strong { font-size: 30px; }
+.executive-total small { font-size: 13px; }
+.executive-sheet,.exception-sheet { margin: 0; background: #fff; }
+.exception-sheet { border-top: 8px solid #172536; }
+.executive-sheet table,.exception-sheet table { table-layout: fixed; }
+.executive-sheet th,.exception-sheet th { position: sticky; top: 0; z-index: 4; background: #7f8d9c; color: #fff; font-size: 12px; }
+.executive-sheet th:nth-child(1),.exception-sheet th:nth-child(1) { width: 10%; }
+.executive-sheet th:nth-child(2),.exception-sheet th:nth-child(2) { width: 22%; }
+.executive-sheet th:nth-child(3),.exception-sheet th:nth-child(3) { width: 38%; }
+.executive-sheet th:nth-child(4),.exception-sheet th:nth-child(4) { width: 8%; }
+.executive-sheet th:nth-child(5),.exception-sheet th:nth-child(5) { width: 22%; }
+.executive-row { cursor: pointer; }
+.executive-row:hover td { outline: 2px solid #000; outline-offset: -2px; }
+.executive-row td { height: 58px; font-size: 15px; }
+.executive-row td:last-child { display: flex; align-items: center; justify-content: space-between; }
+.owner-cell { font-weight: 900; }
+.owner-ti { background: #f00000 !important; color: #fff; }
+.owner-delta { background: #73cfff !important; color: #000; }
+.owner-closed { background: #a9a9a9 !important; color: #000; }
+.owner-ti-delta { background: #fff000 !important; color: #000; }
+.executive-fill,.executive-count { font-weight: 900; }
+.executive-count { text-align: center; font-size: 24px !important; }
+.executive-red { background: #f00000 !important; color: #fff; }
+.executive-yellow { background: #fff000 !important; color: #000; }
+.executive-green { background: #00ed4b !important; color: #000; }
+.executive-black { background: #000 !important; color: #fff; }
+.executive-magenta { background: #ff008c !important; color: #fff; }
+.clear-filter { margin-left: 8px; padding: 2px 5px; background: #fff; border: 1px solid #657484; color: #000; font-weight: 700; }
+@media(max-width:760px){.sidebar nav{grid-template-columns:repeat(4,1fr)}.executive-sheet,.exception-sheet{overflow-x:auto}.executive-sheet table,.exception-sheet table{min-width:900px}}

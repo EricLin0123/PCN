@@ -51,13 +51,53 @@ uv run --with openpyxl python scripts/import_source_data.py --reset
 `--reset` prints the database path before deleting it. Never use it against a
 production database. A committed migration writes `data/import-report.json`.
 
+### One-time risk-assessment migration
+
+The 184 reports in the `RA index` worksheet of `main.xlsx` were imported once
+with:
+
+```bash
+uv run --with openpyxl python scripts/import_ra_index.py
+```
+
+This script is also development-only and is never called by Nuxt. It refuses to
+run when RA data already exists. The explicit `--reset-ra` option deletes and
+rebuilds only RA records and their part links. Its validation report is written
+to `data/ra-import-report.json`.
+
+Each risk assessment belongs to at most one PCN. A PCN can have multiple risk
+assessments, and each assessment can cover one or more of that PCN's
+authoritative TI parts. After this one-time migration, RA changes must be made
+through the PCN detail page and are stored directly in SQLite; `main.xlsx` is
+not a runtime data source.
+
 ## Editing and calculated data
 
-Create and edit PCNs from the web interface. Metadata, risk overrides, TI part
-relationships, and Delta form workflow changes are written directly to SQLite.
+Create and edit PCNs from the web interface. Metadata, risk overrides, risk
+assessments, and Delta form workflow changes are written directly to SQLite.
+Authoritative TI affected parts are read-only in the application.
 Expected risk is calculated from `change_type.default_risk` unless the PCN has
 an explicit `risk_override`. Dashboard values are live database queries, not
 imported spreadsheet calculations.
+
+### Operational PCN states
+
+Upload state is calculated by comparing each PCN's authoritative TI parts with
+the TI part numbers present on Delta forms having the same normalized PCN base:
+
+- **All uploaded**: every authoritative TI part is represented on Delta.
+- **Partly uploaded**: at least one, but not every, authoritative part is represented.
+- **Not uploaded**: none of the authoritative parts are represented on Delta.
+
+These calculations reproduce the `PCN upload status` worksheet totals without
+reading `main.xlsx` at runtime. Expected risk follows the approved change-type
+mapping in `scripts/import_source_data.py`; unlisted change types are marked
+`UNKNOWN` for review. The risk-alignment state compares expected `MAJOR` or
+`MINOR` risk with Delta `NOTIFY`, flags disagreements as `MISMATCH`, distinguishes
+PCNs not seen on Delta, and treats EOL PCNs as not applicable.
+
+Dashboard state cards link directly to the matching PCN list. Upload state,
+expected risk, risk alignment, and Delta form status filters can be combined.
 
 ## Backups
 

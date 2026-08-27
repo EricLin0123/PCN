@@ -1,6 +1,7 @@
 <script setup lang="ts">
 const route = useRoute()
 const links = [
+  { to: '/executive', label: 'Executive summary', icon: 'lucide:list-checks' },
   { to: '/', label: 'Overview', icon: 'lucide:layout-dashboard' },
   { to: '/pcns', label: 'PCN records', icon: 'lucide:files' },
   { to: '/pcns/new', label: 'New PCN', icon: 'lucide:circle-plus' },

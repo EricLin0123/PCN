@@ -1,0 +1,745 @@
+:root {
+  --ink: #111827;
+  --muted: #526174;
+  --line: #aeb8c5;
+  --surface: #ffffff;
+  --bg: #e8edf3;
+  --nav: #182433;
+  --primary: #174f86;
+  --primary-dark: #123e69;
+  --shadow: none;
+}
+
+*,
+*::before,
+*::after {
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+body {
+  background: var(--bg);
+}
+
+.sidebar {
+  padding: 0;
+  border-right: 1px solid #0d1723;
+}
+
+.brand {
+  min-height: 68px;
+  padding: 14px 18px;
+  border-bottom: 1px solid #344355;
+}
+
+.brand-mark {
+  background: #27689f;
+}
+
+.sidebar nav {
+  gap: 0;
+}
+
+.sidebar nav a {
+  padding: 13px 18px;
+  border-bottom: 1px solid #2b394a;
+}
+
+.sidebar nav a:hover,
+.sidebar nav a.active {
+  background: #29455f;
+}
+
+.sidebar nav a.active {
+  box-shadow: inset 4px 0 #66a6d9 !important;
+}
+
+.source-note {
+  margin: 0;
+  padding: 14px 18px;
+  background: #111c29;
+}
+
+.page {
+  max-width: none;
+  padding: 0 0 40px;
+}
+
+.page-header,
+.detail-header {
+  min-height: 104px;
+  margin: 0;
+  padding: 22px 28px;
+  background: #f7f9fb;
+  border-bottom: 1px solid var(--line);
+}
+
+.page-header h1,
+.detail-header h1 {
+  letter-spacing: 0;
+}
+
+.eyebrow {
+  color: #3f5f7c !important;
+}
+
+.button,
+.icon-button,
+input,
+select,
+textarea {
+  border-color: #8795a6;
+}
+
+.button:hover,
+.state-card:hover {
+  transform: none;
+}
+
+.button.primary {
+  background: #174f86;
+  border-color: #123e69;
+}
+
+.button.secondary {
+  background: #e5ebf1;
+}
+
+.panel {
+  border-color: var(--line);
+}
+
+.metric-grid,
+.loading-grid,
+.state-card-grid,
+.dashboard-grid,
+.detail-grid {
+  gap: 0;
+  margin: 0;
+}
+
+.metric-card,
+.state-card {
+  border-width: 0 1px 1px 0;
+}
+
+.metric-card {
+  padding: 17px 20px;
+}
+
+.metric-icon,
+.metric-icon.indigo,
+.metric-icon.cyan,
+.metric-icon.amber,
+.metric-icon.green,
+.metric-icon.rose {
+  color: #ffffff;
+  background: #406b91;
+}
+
+.state-card {
+  padding: 16px 20px;
+  background: #eaf0f5;
+}
+
+.state-card > span {
+  color: #ffffff;
+  background: #426b8e;
+}
+
+.dashboard-grid .panel,
+.facts-panel,
+.parts-panel,
+.recent-panel,
+.mismatch-panel {
+  margin: 0;
+  padding: 22px 28px;
+  border-width: 0 1px 1px 0;
+}
+
+.bar-track {
+  background: #d6dde5;
+}
+
+.bar-track i {
+  background: #326b9e;
+}
+
+.bar-track i.workflow-cancel {
+  background: #000;
+}
+
+.bar-track i.workflow-processing {
+  background: #fff000;
+}
+
+.bar-track i.workflow-reject {
+  background: #f00000;
+}
+
+.bar-track i.workflow-complete {
+  background: #00ed4b;
+}
+
+.risk-summary > div,
+.mini-alert {
+  background: #e9eef3;
+}
+
+.mini-alert {
+  color: #354b60;
+}
+
+.badge,
+.state-badge,
+.status-pill,
+.section-count,
+.parse-badge {
+  border: 1px solid #111;
+  }
+
+.risk-major,
+.state-not-uploaded {
+  color: #fff;
+  background: #f00000;
+}
+
+.risk-minor,
+.state-partly-uploaded,
+.state-review {
+  color: #000;
+  background: #fff000;
+}
+
+.risk-eol {
+  color: #fff;
+  background: #7200ff;
+}
+
+.state-all-uploaded,
+.state-match {
+  color: #000;
+  background: #00ed4b;
+}
+
+.state-mismatch {
+  color: #fff;
+  background: #ff008c;
+}
+
+.state-not-on-delta {
+  color: #000;
+  background: #b8b8b8;
+}
+
+.state-not-applicable,
+.risk-unknown {
+  color: #000;
+  background: #c8c8c8;
+}
+
+/* PCN records: dense, continuous worksheet presentation. */
+.filter-panel {
+  margin: 0;
+  padding: 0;
+  gap: 0;
+  border-width: 0 0 1px;
+  background: #dbe3eb;
+}
+
+.filter-panel input,
+.filter-panel select {
+  min-height: 39px;
+  border-width: 0 1px 0 0;
+  background: #f5f7f9;
+}
+
+.filter-panel .search-box svg {
+  top: 12px;
+}
+
+.list-panel {
+  margin: 0;
+  padding: 0;
+  border-width: 0;
+}
+
+.list-panel > .table-wrap {
+  overflow: visible;
+}
+
+.list-meta {
+  height: 36px;
+  padding: 0 12px;
+  background: #cfd9e3;
+  border-bottom: 1px solid #8f9baa;
+  color: #27384a;
+}
+
+.records-table {
+  table-layout: fixed;
+  background: #ffffff;
+}
+
+.records-table th {
+  position: sticky;
+  top: 0;
+  z-index: 8;
+  height: 72px;
+  padding: 6px 8px;
+  background: #bdc9d5;
+  border-right: 1px solid #8e9aa8;
+  border-bottom: 1px solid #768595;
+  color: #172536;
+  font-size: 9px;
+  vertical-align: top;
+}
+
+.column-heading {
+  display: block;
+  height: 22px;
+  overflow: hidden;
+  color: #172536;
+  font-weight: 800;
+  line-height: 18px;
+  white-space: nowrap;
+}
+
+.records-table .column-filter {
+  width: 100%;
+  height: 31px;
+  min-height: 31px;
+  margin: 2px 0 0;
+  padding: 4px 6px;
+  border: 1px solid #657484;
+  background: #fff;
+  color: #111;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: none;
+}
+
+.records-table td {
+  height: 42px;
+  padding: 5px 8px;
+  border-right: 1px solid #c1c9d2;
+  border-bottom: 1px solid #c1c9d2;
+  color: #253447;
+  vertical-align: middle;
+}
+
+.records-table tbody tr:nth-child(even) {
+  background: #eef3f7;
+}
+
+.records-table tbody tr:hover {
+  background: #d9e7f3;
+}
+
+.records-table th:first-child,
+.records-table td:first-child {
+  width: 25%;
+}
+
+.records-table th:nth-child(2),
+.records-table td:nth-child(2) {
+  width: 16%;
+}
+
+.records-table th:nth-child(3),
+.records-table td:nth-child(3) {
+  width: 9%;
+}
+
+.records-table th:nth-child(4),
+.records-table td:nth-child(4) {
+  width: 14%;
+}
+
+.records-table th:nth-child(5),
+.records-table td:nth-child(5) {
+  width: 10%;
+}
+
+.records-table th:nth-child(6),
+.records-table td:nth-child(6) {
+  width: 14%;
+}
+
+.records-table th:nth-child(7),
+.records-table td:nth-child(7) {
+  width: 12%;
+}
+
+.record-title small {
+  margin-top: 2px;
+}
+
+.coverage-count {
+  margin-top: 2px;
+}
+
+.pagination {
+  margin: 0;
+  padding: 10px;
+  background: #dbe3eb;
+  border-top: 1px solid #99a6b4;
+}
+
+.edit-form,
+.detail-edit,
+.ra-add,
+.ra-card,
+.delta-card {
+  margin: 0;
+}
+
+.forms-section,
+.ra-section {
+  margin: 0;
+  padding: 0;
+}
+
+.delta-summary {
+  margin: 0;
+  border-width: 0 0 1px;
+}
+
+.delta-summary .section-title {
+  padding: 12px 22px;
+}
+
+.delta-summary table {
+  table-layout: fixed;
+}
+
+.delta-summary th,
+.delta-summary td {
+  width: 25%;
+}
+
+.ti-part-list {
+  max-height: 310px;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  border-top: 1px solid #8f9baa;
+  border-left: 1px solid #8f9baa;
+  list-style: none;
+  counter-reset: ti-part;
+}
+
+.ti-part-list li {
+  display: grid;
+  grid-template-columns: 42px 1fr;
+  min-height: 34px;
+  border-right: 1px solid #8f9baa;
+  border-bottom: 1px solid #8f9baa;
+  background: #fff;
+  counter-increment: ti-part;
+}
+
+.ti-part-list li:nth-child(even) {
+  background: #eef3f7;
+}
+
+.ti-part-list li::before {
+  content: counter(ti-part);
+  display: grid;
+  place-items: center;
+  border-right: 1px solid #8f9baa;
+  background: #d2dbe4;
+  color: #26384a;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.ti-part-list li span {
+  align-self: center;
+  padding: 6px 10px;
+  color: #111;
+  font-family: 'DM Mono', monospace;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.section-title {
+  margin: 0;
+  padding: 14px 22px;
+  background: #cfd9e3;
+  border-bottom: 1px solid #8f9baa;
+}
+
+.ra-add,
+.ra-card,
+.delta-head,
+.delta-edit {
+  border-bottom: 1px solid var(--line);
+}
+
+table th,
+table td {
+  border-right: 1px solid #c1c9d2;
+}
+
+table th {
+  background: #d2dbe4;
+  color: #26384a;
+}
+
+/* Excel-style status cells: the cell itself carries the color. */
+td.fill-cell {
+  color: #142130;
+}
+
+td.fill-cell .badge,
+td.fill-cell .state-badge,
+td.fill-cell .status-pill,
+td.fill-cell .parse-badge {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+}
+
+td.fill-cell .badge > span,
+td.fill-cell .state-badge > span {
+  display: none;
+}
+
+td.fill-cell .coverage-count {
+  color: #354455;
+}
+
+td.fill-major {
+  color: #fff;
+  background: #f00000 !important;
+}
+
+td.fill-minor {
+  color: #000;
+  background: #fff000 !important;
+}
+
+td.fill-eol {
+  color: #fff;
+  background: #7200ff !important;
+}
+
+td.fill-mismatch {
+  color: #fff;
+  background: #ff008c !important;
+}
+
+td.fill-all-uploaded,
+td.fill-match,
+td.fill-parsed {
+  color: #000;
+  background: #00ed4b !important;
+}
+
+td.fill-partly-uploaded,
+td.fill-review {
+  color: #000;
+  background: #fff000 !important;
+}
+
+td.fill-not-uploaded {
+  color: #fff;
+  background: #f00000 !important;
+}
+
+td.fill-not-on-delta {
+  color: #000;
+  background: #b8b8b8 !important;
+}
+
+td.fill-not-applicable,
+td.fill-unknown {
+  color: #000;
+  background: #c8c8c8 !important;
+}
+
+td.fill-delta {
+  color: #000;
+  background: #00d9ff !important;
+}
+
+td.fill-unresolved {
+  color: #fff;
+  background: #ff008c !important;
+}
+
+td.fill-delta-cancel {
+  color: #fff;
+  background: #000 !important;
+}
+
+td.fill-delta-processing {
+  color: #000;
+  background: #fff000 !important;
+}
+
+td.fill-delta-reject {
+  color: #fff;
+  background: #f00000 !important;
+}
+
+td.fill-delta-complete {
+  color: #000;
+  background: #00ed4b !important;
+}
+
+td.fill-delta-blank {
+  color: #000;
+  background: #b8b8b8 !important;
+}
+
+td.fill-ra-na {
+  color: #fff;
+  background: #000 !important;
+}
+
+td.fill-ra-miss-all-ra {
+  color: #fff;
+  background: #f00000 !important;
+}
+
+td.fill-ra-partly-miss-ra {
+  color: #000;
+  background: #fff000 !important;
+}
+
+td.fill-ra-full-ra {
+  color: #000;
+  background: #00ed4b !important;
+}
+
+.delta-status-cell > strong {
+  font-size: 10px;
+  letter-spacing: .04em;
+}
+
+td.fill-cell .coverage-count {
+  color: inherit;
+  font-weight: 800;
+}
+
+@media (max-width: 760px) {
+  .page-header,
+  .detail-header {
+    padding: 18px 16px;
+  }
+
+  .sidebar {
+    padding: 0;
+  }
+
+  .sidebar nav a {
+    border-right: 1px solid #2b394a;
+    border-bottom: 0;
+  }
+}
+
+/* Larger operational typography. */
+body {
+  font-size: 16px;
+}
+
+.sidebar nav a {
+  font-size: 15px;
+}
+
+.brand strong {
+  font-size: 19px;
+}
+
+.brand small,
+.source-note strong {
+  font-size: 12px;
+}
+
+.source-note small {
+  font-size: 11px;
+}
+
+.page-header h1,
+.detail-header h1 {
+  font-size: 34px;
+}
+
+.page-header p,
+.detail-header p {
+  font-size: 16px;
+}
+
+.eyebrow {
+  font-size: 12px !important;
+}
+
+.button,
+input,
+select,
+textarea {
+  font-size: 14px;
+}
+
+.panel-heading h2,
+.section-title h2 {
+  font-size: 19px;
+}
+
+.panel-heading p,
+.facts dd,
+.notes p {
+  font-size: 14px;
+}
+
+.facts dt,
+.edit-form label > span,
+.delta-edit label > span,
+.ra-add label,
+.ra-card label {
+  font-size: 11px;
+}
+
+table,
+.records-table {
+  font-size: 14px;
+}
+
+th,
+.records-table th {
+  font-size: 11px;
+}
+
+.records-table td {
+  height: 50px;
+  font-size: 14px;
+}
+
+.record-title small,
+.coverage-count,
+.state-card small {
+  font-size: 11px;
+}
+
+.badge,
+.state-badge,
+.status-pill,
+.parse-badge,
+.delta-status-cell > strong {
+  font-size: 11px;
+}
+
+.list-meta,
+.bar-row,
+.back-link {
+  font-size: 13px;
+}
+
+.mono-link {
+  color: #000;
+  font-size: 14px;
+  font-weight: 700;
+}

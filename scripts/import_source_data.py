@@ -79,11 +79,47 @@ def iso_date(value: Any) -> str | None:
     return text
 
 
+RISK_BY_CHANGE_TYPE = {
+    "Assembly": "MINOR",
+    "Assembly, Packing / Shipping": "MINOR",
+    "Data Sheet Change": "MAJOR",
+    "Product Obsolescence/End Of Life": "EOL",
+    "Assembly, Design, Packing / Shipping, Wafer Fab Site": "MAJOR",
+    "Assembly, Design, Wafer Fab Site": "MAJOR",
+    "Wafer Fab Site": "MAJOR",
+    "Assembly, Test": "MINOR",
+    "Packing / Shipping": "MINOR",
+    "Assembly, Assembly Site, Wafer Fab Site": "MAJOR",
+    "Assembly, Data Sheet Change, Design, Wafer Fab Site": "MAJOR",
+    "Assembly, Data Sheet Change, Design, Test, Wafer Fab Site": "MAJOR",
+    "Test, Wafer Fab Site": "MAJOR",
+    "Assembly, Design, Test": "MAJOR",
+    "Design, Wafer Fab Site": "MAJOR",
+    "Wafer Fab Process": "MAJOR",
+    "Assembly, Design": "MAJOR",
+    "Assembly, Data Sheet Change, Design": "MAJOR",
+    "Assembly, Design, Test, Wafer Fab Site": "MAJOR",
+    "Assembly, Data Sheet Change, Design, Test": "MAJOR",
+    "Test": "MINOR",
+    "Assembly, Design, Wafer Fab Process, Wafer Fab Site": "MAJOR",
+    "End of Life": "EOL",
+    "Informational": "MINOR",
+    "Fab and Assembly/Test Sites": "MAJOR",
+    "Fab Site": "MAJOR",
+    "Cu": "MINOR",
+    "Test Site": "MINOR",
+    "Data Sheet": "MAJOR",
+    "Material": "MAJOR",
+    "Assembly Site": "MINOR",
+    "uBOM": "MINOR",
+    "Die Revision": "MAJOR",
+    "Packing": "MINOR",
+    "Package Marking": "MINOR",
+}
+
+
 def default_risk(change_type: str) -> str:
-    """Conservative initial policy; admins can override each PCN in the GUI."""
-    minor_terms = ("INFORMATION", "PACK", "LABEL", "MARK", "DATASHEET", "DATA SHEET")
-    upper = change_type.upper()
-    return "MINOR" if any(term in upper for term in minor_terms) else "MAJOR"
+    return RISK_BY_CHANGE_TYPE.get(change_type.strip(), "UNKNOWN")
 
 
 def int_or_none(value: Any) -> int | None:

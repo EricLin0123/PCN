@@ -1,0 +1,115 @@
+.metric-grid,
+.loading-grid {
+  grid-template-columns: repeat(5, 1fr);
+}
+
+.metric-icon.green {
+  color: #167555;
+  background: #e4f7ef;
+}
+
+.ra-add {
+  display: grid;
+  grid-template-columns: 130px 1.2fr 1fr auto;
+  gap: 12px;
+  align-items: end;
+  padding: 17px;
+  margin-bottom: 12px;
+}
+
+.ra-add > div,
+.ra-file,
+.ra-parts {
+  display: grid;
+  gap: 6px;
+}
+
+.ra-add label,
+.ra-card label {
+  color: #657083;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.ra-add small {
+  color: #9299a5;
+  font-size: 9px;
+}
+
+.ra-add select[multiple],
+.ra-card select[multiple] {
+  min-height: 70px;
+}
+
+.ra-list {
+  display: grid;
+  gap: 9px;
+}
+
+.ra-card {
+  display: grid;
+  grid-template-columns: 115px 1.25fr 1fr auto;
+  gap: 14px;
+  align-items: center;
+  padding: 15px 17px;
+}
+
+.ra-number {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ra-number > span {
+  color: #4f46e5;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .08em;
+}
+
+.ra-number input {
+  font-family: 'DM Mono', monospace;
+  font-weight: 500;
+}
+
+.ra-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.icon-button.danger {
+  color: #c43a54;
+}
+
+@media (max-width: 1200px) {
+  .metric-grid,
+  .loading-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .ra-add,
+  .ra-card {
+    grid-template-columns: 120px 1fr;
+  }
+
+  .ra-parts,
+  .ra-add > div:nth-child(3) {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 760px) {
+  .metric-grid,
+  .loading-grid,
+  .ra-add,
+  .ra-card {
+    grid-template-columns: 1fr;
+  }
+
+  .ra-parts,
+  .ra-add > div:nth-child(3) {
+    grid-column: auto;
+  }
+}

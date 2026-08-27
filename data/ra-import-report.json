@@ -1,0 +1,11 @@
+{
+  "source_rows_read": 184,
+  "risk_assessments_created": 184,
+  "pcn_bases_with_ra": 72,
+  "unique_ra_parts": 271,
+  "ra_part_links_created": 293,
+  "unmatched_pcn_bases": 0,
+  "part_count_mismatches": 0,
+  "parts_not_in_ti_source": 0,
+  "parts_not_affected_by_pcn": 0
+}

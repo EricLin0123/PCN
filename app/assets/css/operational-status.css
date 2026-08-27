@@ -1,0 +1,157 @@
+.risk-eol {
+  color: #6d3eb3;
+  background: #f1eaff;
+}
+
+.risk-eol > span {
+  background: #8b5bd0;
+}
+
+.state-card-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.state-card {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 12px;
+  align-items: start;
+  padding: 18px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  box-shadow: var(--shadow);
+  transition: .18s;
+}
+
+.state-card:hover {
+  transform: translateY(-2px);
+  border-color: #c5c0f1;
+  box-shadow: 0 8px 24px #17203312;
+}
+
+.state-card > span {
+  display: grid;
+  place-items: center;
+  width: 35px;
+  height: 35px;
+  border-radius: 9px;
+  color: #5148d4;
+  background: #efedff;
+}
+
+.state-card > svg {
+  color: #a2a9b5;
+  font-size: 15px;
+}
+
+.state-card p,
+.state-card small,
+.state-card strong {
+  display: block;
+}
+
+.state-card p {
+  margin: 0;
+  color: #616b7d;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.state-card strong {
+  margin: 2px 0 5px;
+  font-size: 23px;
+}
+
+.state-card small,
+.coverage-count {
+  color: #929aa7;
+  font-size: 9px;
+}
+
+.coverage-count {
+  display: block;
+  margin-top: 5px;
+}
+
+.state-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  padding: 5px 8px;
+  border-radius: 20px;
+  background: #edf0f4;
+  color: #647083;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .03em;
+}
+
+.state-badge > span {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.state-all-uploaded,
+.state-match {
+  color: #147454;
+  background: #e4f7ef;
+}
+
+.state-partly-uploaded,
+.state-review {
+  color: #98700b;
+  background: #fff5d8;
+}
+
+.state-not-uploaded,
+.state-mismatch {
+  color: #b4233f;
+  background: #ffedf0;
+}
+
+.state-not-on-delta,
+.state-not-applicable {
+  color: #647083;
+  background: #edf0f4;
+}
+
+.mismatch-panel {
+  padding: 22px 22px 8px;
+  margin-bottom: 18px;
+}
+
+.filter-panel {
+  grid-template-columns: minmax(220px, 1fr) repeat(5, minmax(125px, 165px));
+}
+
+@media (max-width: 1250px) {
+  .state-card-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .filter-panel {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .filter-panel .search-box {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 760px) {
+  .state-card-grid,
+  .filter-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .filter-panel .search-box {
+    grid-column: auto;
+  }
+}
