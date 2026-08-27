@@ -1,115 +1,132 @@
 # PCN Workbench
 
-A Nuxt application for managing product change notifications. SQLite is the
-only runtime source of truth. The application does not read, watch, import, or
-synchronize spreadsheets.
+Local PCN tracking application for Windows. The application runs on your own
+laptop and stores changes in the included SQLite database. It does not require
+a shared server or access to the original Excel files.
 
-## Setup
+## 1. Install the prerequisites
 
-Requirements: Node.js 22 or newer and npm.
+Install these once:
 
-```bash
+1. [Git for Windows](https://git-scm.com/download/win)
+2. [Node.js 24 LTS](https://nodejs.org/en/download)
+
+Use the default installation options. Restart Windows after installation if the
+commands below are not recognized.
+
+## 2. Download the application
+
+Open **PowerShell**, then run:
+
+```powershell
+cd $HOME\Documents
+git clone https://github.com/EricLin0123/PCN.git
+cd PCN
+```
+
+The first command chooses the Documents folder. The second downloads the
+application, and the third enters its folder.
+
+## 3. Install the application packages
+
+Run this once after cloning:
+
+```powershell
 npm install
+```
+
+No `.env` file or spreadsheet setup is required. The application uses
+`data/pcn.db` automatically.
+
+## 4. Start the application
+
+From the `PCN` folder, run:
+
+```powershell
 npm run dev
 ```
 
-The app opens `data/pcn.db` by default. Set `PCN_DB_PATH` to use a different
-SQLite file. The schema in `data/schema.sql` is verified when the server first
-opens the database, but source data is never imported during startup.
+Wait until PowerShell displays a local address, normally:
 
-Useful checks:
-
-```bash
-npm run typecheck
-npm run build
-sqlite3 data/pcn.db "PRAGMA integrity_check; PRAGMA foreign_key_check;"
+```text
+http://localhost:3000
 ```
 
-## One-time source migration
+Open that address in Edge or Chrome. Keep the PowerShell window open while
+using the application.
 
-The initial database has already been populated. The retained migration is for
-development reproducibility only; the Nuxt application never calls it.
+To stop the application, return to PowerShell and press **Ctrl+C**.
 
-It accepts only:
+## Starting it again later
 
-- `source of truth/PCN From TI.csv`
-- `source of truth/PCN From Delta.xlsx`
+Open PowerShell and run:
 
-Run it in a Python environment with `openpyxl`:
-
-```bash
-uv run --with openpyxl python scripts/import_source_data.py
+```powershell
+cd $HOME\Documents\PCN
+npm run dev
 ```
 
-The normal command refuses to run once PCN data exists. To deliberately delete
-and rebuild a development database, stop the app and explicitly run:
+Then open [http://localhost:3000](http://localhost:3000).
 
-```bash
-uv run --with openpyxl python scripts/import_source_data.py --reset
+## Back up your data
+
+Each laptop has its own independent database. Changes made by one person do not
+appear on another person's laptop.
+
+Stop the application before making a backup. Then run:
+
+```powershell
+cd $HOME\Documents\PCN
+New-Item -ItemType Directory -Force backups
+Copy-Item data\pcn.db "backups\pcn-$(Get-Date -Format yyyyMMdd-HHmmss).db"
 ```
 
-`--reset` prints the database path before deleting it. Never use it against a
-production database. A committed migration writes `data/import-report.json`.
+Keep important backup files somewhere outside the repository as well.
 
-### One-time risk-assessment migration
+## Optional environment setting
 
-The 184 reports in the `RA index` worksheet of `main.xlsx` were imported once
-with:
+No environment configuration is required. Advanced users can place the database
+elsewhere for the current PowerShell session:
 
-```bash
-uv run --with openpyxl python scripts/import_ra_index.py
+```powershell
+$env:PCN_DB_PATH = "C:\PCN-Data\pcn.db"
+npm run dev
 ```
 
-This script is also development-only and is never called by Nuxt. It refuses to
-run when RA data already exists. The explicit `--reset-ra` option deletes and
-rebuilds only RA records and their part links. Its validation report is written
-to `data/ra-import-report.json`.
+The target database must already contain the PCN data. Do not point multiple
+computers at the same SQLite file on a network drive.
 
-Each risk assessment belongs to at most one PCN. A PCN can have multiple risk
-assessments, and each assessment can cover one or more of that PCN's
-authoritative TI parts. After this one-time migration, RA changes must be made
-through the PCN detail page and are stored directly in SQLite; `main.xlsx` is
-not a runtime data source.
+## Troubleshooting
 
-## Editing and calculated data
+### `git` is not recognized
 
-Create and edit PCNs from the web interface. Metadata, risk overrides, risk
-assessments, and Delta form workflow changes are written directly to SQLite.
-Authoritative TI affected parts are read-only in the application.
-Expected risk is calculated from `change_type.default_risk` unless the PCN has
-an explicit `risk_override`. Dashboard values are live database queries, not
-imported spreadsheet calculations.
+Install Git for Windows, close PowerShell, and open it again.
 
-### Operational PCN states
+### `npm` or `node` is not recognized
 
-Upload state is calculated by comparing each PCN's authoritative TI parts with
-the TI part numbers present on Delta forms having the same normalized PCN base:
+Install Node.js 24 LTS, close PowerShell, and open it again.
 
-- **All uploaded**: every authoritative TI part is represented on Delta.
-- **Partly uploaded**: at least one, but not every, authoritative part is represented.
-- **Not uploaded**: none of the authoritative parts are represented on Delta.
+### Port 3000 is already in use
 
-These calculations reproduce the `PCN upload status` worksheet totals without
-reading `main.xlsx` at runtime. Expected risk follows the approved change-type
-mapping in `scripts/import_source_data.py`; unlisted change types are marked
-`UNKNOWN` for review. The risk-alignment state compares expected `MAJOR` or
-`MINOR` risk with Delta `NOTIFY`, flags disagreements as `MISMATCH`, distinguishes
-PCNs not seen on Delta, and treats EOL PCNs as not applicable.
+Run the application on another port:
 
-Dashboard state cards link directly to the matching PCN list. Upload state,
-expected risk, risk alignment, and Delta form status filters can be combined.
-
-## Backups
-
-SQLite's online backup command creates a consistent copy even when WAL mode is
-enabled:
-
-```bash
-mkdir -p backups
-sqlite3 data/pcn.db ".backup 'backups/pcn-$(date +%Y%m%d-%H%M%S).db'"
+```powershell
+$env:PORT = "3001"
+npm run dev
 ```
 
-Keep backups outside the application deployment and test restoration
-periodically. To restore, stop the app, preserve the current database, place the
-chosen backup at `data/pcn.db`, and run the integrity checks above before
-restarting.
+Then open [http://localhost:3001](http://localhost:3001).
+
+### The application was closed accidentally
+
+Your saved changes remain in `data\pcn.db`. Start the application again using
+the instructions above.
+
+## Important notes
+
+- SQLite is the only runtime source of truth.
+- The application does not import or synchronize Excel/CSV files.
+- TI affected parts are read-only.
+- Do not delete or replace `data\pcn.db` without keeping a backup.
+- Do not run `git pull` after entering new data unless you have first backed up
+  `data\pcn.db`; database changes can conflict with repository updates.
