@@ -78,6 +78,21 @@ export default defineEventHandler((event) => {
            )
          ORDER BY tp3.normalized_part_number
        ) received) AS delta_received_parts,
+      (SELECT group_concat(missed.display_part_number, '; ')
+       FROM (
+         SELECT tp4.display_part_number
+         FROM pcn_ti_part pp4
+         JOIN ti_part tp4 ON tp4.id = pp4.ti_part_id
+         WHERE pp4.pcn_id = p.id
+           AND NOT EXISTS (
+             SELECT 1
+             FROM delta_form df4
+             JOIN delta_form_item dfi4 ON dfi4.delta_form_id = df4.id
+             WHERE df4.pcn_id = p.id
+               AND dfi4.ti_part_number_normalized = tp4.normalized_part_number
+           )
+         ORDER BY tp4.normalized_part_number
+       ) missed) AS missed_parts,
       (SELECT count(*) FROM delta_form df WHERE df.pcn_id = p.id) AS form_count,
       (SELECT count(*) FROM risk_assessment ra WHERE ra.pcn_id = p.id) AS ra_count,
       (SELECT group_concat(DISTINCT COALESCE(df.form_status, 'UNSPECIFIED')) FROM delta_form df WHERE df.pcn_id = p.id) AS statuses,

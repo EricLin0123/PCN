@@ -55,6 +55,7 @@ async function exportToExcel() {
       { header: 'Title', key: 'title', width: 55 },
       { header: 'TI Affected Parts', key: 'tiAffectedParts', width: 55 },
       { header: 'Delta Received Parts', key: 'deltaReceivedParts', width: 55 },
+      { header: 'Missed Parts', key: 'missedParts', width: 55 },
       { header: 'Change Type', key: 'changeType', width: 32 },
       { header: 'Expected Risk', key: 'risk', width: 17 },
       { header: 'Upload State', key: 'uploadState', width: 22 },
@@ -78,6 +79,7 @@ async function exportToExcel() {
         title: pcn.title,
         tiAffectedParts: pcn.ti_affected_parts || '',
         deltaReceivedParts: pcn.delta_received_parts || '',
+        missedParts: pcn.missed_parts || '',
         changeType: pcn.change_type || 'Unspecified',
         risk: displayState(pcn.risk),
         uploadState: displayState(pcn.upload_state),
@@ -92,14 +94,15 @@ async function exportToExcel() {
       row.getCell(1).numFmt = '@'
       row.getCell(3).numFmt = '@'
       row.getCell(4).numFmt = '@'
-      for (const [column, state] of [[6, pcn.risk], [7, pcn.upload_state], [10, pcn.delta_status], [11, pcn.risk_alignment], [13, pcn.ra_state]] as const) {
+      row.getCell(5).numFmt = '@'
+      for (const [column, state] of [[7, pcn.risk], [8, pcn.upload_state], [11, pcn.delta_status], [12, pcn.risk_alignment], [14, pcn.ra_state]] as const) {
         const cell = row.getCell(column)
         cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: exportFill[state] || 'FFFFFFFF' } }
         cell.font = { bold: true, color: { argb: ['MAJOR', 'REJECT', 'CANCEL', 'MISMATCH', 'MISS_ALL_RA', 'NA'].includes(state) ? 'FFFFFFFF' : 'FF000000' } }
       }
     }
 
-    sheet.autoFilter = { from: 'A1', to: 'N1' }
+    sheet.autoFilter = { from: 'A1', to: 'O1' }
     sheet.eachRow((row, rowNumber) => {
       if (rowNumber > 1) row.height = 21
       row.eachCell((cell) => {
