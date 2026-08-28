@@ -9,19 +9,119 @@ const riskAlignment = ref(String(route.query.riskAlignment || ''))
 const raState = ref(String(route.query.raState || ''))
 const changeType = ref(String(route.query.changeType || ''))
 const executiveState = ref(String(route.query.executiveState || ''))
+const exporting = ref(false)
+const exportError = ref('')
 const query = computed(() => ({ search: String(route.query.search || ''), risk: String(route.query.risk || ''), status: String(route.query.status || ''), uploadState: String(route.query.uploadState || ''), riskAlignment: String(route.query.riskAlignment || ''), raState: String(route.query.raState || ''), changeType: String(route.query.changeType || ''), executiveState: String(route.query.executiveState || ''), pageSize: 'all' }))
-const { data, status } = await useFetch<any>('/api/pcns', { query, watch: [query] })
+const { data, status, refresh } = await useFetch<any>('/api/pcns', { query, watch: [query] })
 const { data: changeTypes } = await useFetch<any[]>('/api/change-types')
 let timer: ReturnType<typeof setTimeout>
+function activeFilters() {
+  return { ...(search.value && { search: search.value }), ...(changeType.value && { changeType: changeType.value }), ...(risk.value && { risk: risk.value }), ...(statusFilter.value && { status: statusFilter.value }), ...(uploadState.value && { uploadState: uploadState.value }), ...(riskAlignment.value && { riskAlignment: riskAlignment.value }), ...(raState.value && { raState: raState.value }), ...(executiveState.value && { executiveState: executiveState.value }) }
+}
 function applyFilters() {
   clearTimeout(timer)
-  timer = setTimeout(() => router.push({ query: { ...(search.value && { search: search.value }), ...(changeType.value && { changeType: changeType.value }), ...(risk.value && { risk: risk.value }), ...(statusFilter.value && { status: statusFilter.value }), ...(uploadState.value && { uploadState: uploadState.value }), ...(riskAlignment.value && { riskAlignment: riskAlignment.value }), ...(raState.value && { raState: raState.value }), ...(executiveState.value && { executiveState: executiveState.value }) } }), 200)
+  timer = setTimeout(() => router.push({ query: activeFilters() }), 200)
+}
+
+const exportFill: Record<string, string> = {
+  MAJOR: 'FFFF0000', MINOR: 'FFFFFF00', EOL: 'FF9900FF', UNKNOWN: 'FFC8C8C8',
+  ALL_UPLOADED: 'FF00F04B', PARTLY_UPLOADED: 'FFFFFF00', NOT_UPLOADED: 'FFFF0000',
+  COMPLETE: 'FF00F04B', PROCESSING: 'FFFFFF00', REJECT: 'FFFF0000', CANCEL: 'FF000000', BLANK: 'FFB8B8B8',
+  MATCH: 'FF00F04B', MISMATCH: 'FFFF008C', NOT_ON_DELTA: 'FFB8B8B8', NOT_APPLICABLE: 'FFB8B8B8',
+  FULL_RA: 'FF00F04B', PARTLY_MISS_RA: 'FFFFFF00', MISS_ALL_RA: 'FFFF0000', NA: 'FF000000',
+}
+
+function displayState(value: string) {
+  return value === 'NA' ? '' : value.replaceAll('_', ' ')
+}
+
+async function exportToExcel() {
+  if (exporting.value) return
+  exporting.value = true
+  exportError.value = ''
+  try {
+    clearTimeout(timer)
+    await router.push({ query: activeFilters() })
+    await refresh()
+    if (!data.value?.items?.length) return
+
+    const { default: ExcelJS } = await import('exceljs')
+    const workbook = new ExcelJS.Workbook()
+    workbook.creator = 'PCN Workbench'
+    workbook.created = new Date()
+    const sheet = workbook.addWorksheet('PCN Records', { views: [{ state: 'frozen', ySplit: 1 }] })
+    sheet.columns = [
+      { header: 'PCN Number', key: 'pcn', width: 18 },
+      { header: 'Title', key: 'title', width: 55 },
+      { header: 'Change Type', key: 'changeType', width: 32 },
+      { header: 'Expected Risk', key: 'risk', width: 17 },
+      { header: 'Upload State', key: 'uploadState', width: 22 },
+      { header: 'Uploaded Parts', key: 'uploadedParts', width: 16 },
+      { header: 'Total Parts', key: 'totalParts', width: 13 },
+      { header: 'Delta Status', key: 'deltaStatus', width: 18 },
+      { header: 'Risk Alignment', key: 'riskAlignment', width: 20 },
+      { header: 'Delta Risk', key: 'deltaRisk', width: 18 },
+      { header: 'RA Coverage', key: 'raState', width: 20 },
+      { header: 'RA Covered Parts', key: 'raCoveredParts', width: 18 },
+    ]
+    sheet.getRow(1).height = 24
+    sheet.getRow(1).eachCell((cell) => {
+      cell.font = { bold: true, color: { argb: 'FFFFFFFF' } }
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1A2940' } }
+    })
+
+    for (const pcn of data.value.items) {
+      const row = sheet.addRow({
+        pcn: String(pcn.pcn_number_base),
+        title: pcn.title,
+        changeType: pcn.change_type || 'Unspecified',
+        risk: displayState(pcn.risk),
+        uploadState: displayState(pcn.upload_state),
+        uploadedParts: pcn.uploaded_parts,
+        totalParts: pcn.total_parts,
+        deltaStatus: displayState(pcn.delta_status),
+        riskAlignment: displayState(pcn.risk_alignment),
+        deltaRisk: pcn.delta_risks || '',
+        raState: displayState(pcn.ra_state),
+        raCoveredParts: pcn.ra_state === 'NA' ? '' : pcn.ra_covered_parts,
+      })
+      row.getCell(1).numFmt = '@'
+      for (const [column, state] of [[4, pcn.risk], [5, pcn.upload_state], [8, pcn.delta_status], [9, pcn.risk_alignment], [11, pcn.ra_state]] as const) {
+        const cell = row.getCell(column)
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: exportFill[state] || 'FFFFFFFF' } }
+        cell.font = { bold: true, color: { argb: ['MAJOR', 'REJECT', 'CANCEL', 'MISMATCH', 'MISS_ALL_RA', 'NA'].includes(state) ? 'FFFFFFFF' : 'FF000000' } }
+      }
+    }
+
+    sheet.autoFilter = { from: 'A1', to: 'L1' }
+    sheet.eachRow((row, rowNumber) => {
+      if (rowNumber > 1) row.height = 21
+      row.eachCell((cell) => {
+        cell.alignment = { vertical: 'middle', wrapText: false }
+        cell.border = { bottom: { style: 'thin', color: { argb: 'FFB8C2CC' } }, right: { style: 'thin', color: { argb: 'FFB8C2CC' } } }
+      })
+    })
+
+    const buffer = await workbook.xlsx.writeBuffer()
+    const blob = new Blob([new Uint8Array(buffer)], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+    const link = document.createElement('a')
+    link.href = URL.createObjectURL(blob)
+    const scope = executiveState.value ? `-${executiveState.value.toLowerCase().replaceAll('_', '-')}` : ''
+    link.download = `pcn-records${scope}-${new Date().toISOString().slice(0, 10)}.xlsx`
+    link.click()
+    setTimeout(() => URL.revokeObjectURL(link.href), 1000)
+  } catch (error) {
+    exportError.value = error instanceof Error ? error.message : 'Excel export failed.'
+  } finally {
+    exporting.value = false
+  }
 }
 </script>
 
 <template>
   <div class="page">
-    <header class="page-header"><div><p class="eyebrow">Database</p><h1>PCN records</h1><p>Search authoritative TI parts, notification details, and Delta workflow.</p></div><NuxtLink to="/pcns/new" class="button primary"><Icon name="lucide:plus" /> Add PCN</NuxtLink></header>
+    <header class="page-header"><div><p class="eyebrow">Database</p><h1>PCN records</h1><p>Search authoritative TI parts, notification details, and Delta workflow.</p></div><div class="page-actions"><button class="button export-button" :disabled="!data?.items?.length || status === 'pending' || exporting" @click="exportToExcel"><Icon :name="exporting ? 'lucide:loader-circle' : 'lucide:file-spreadsheet'" :class="{ spin: exporting }" /> {{ exporting ? 'Exporting…' : 'Export to Excel' }}</button><NuxtLink to="/pcns/new" class="button primary"><Icon name="lucide:plus" /> Add PCN</NuxtLink></div></header>
+    <div v-if="exportError" class="alert error export-error">{{ exportError }}</div>
     <section class="panel list-panel">
       <div class="list-meta"><span v-if="data"><strong>{{ data.total.toLocaleString() }}</strong> records <template v-if="executiveState">· Executive queue: <strong>{{ executiveState.replaceAll('_', ' ') }}</strong> <NuxtLink to="/pcns" class="clear-filter">Clear</NuxtLink></template></span><span v-if="status === 'pending'" class="muted"><Icon name="lucide:loader-circle" class="spin" /> Updating</span></div>
       <div v-if="data?.items.length" class="table-wrap"><table class="records-table">

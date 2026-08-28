@@ -79,6 +79,22 @@ body {
   letter-spacing: 0;
 }
 
+.page-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.export-button {
+  background: #ffffff;
+  border-color: #174f86;
+  color: #123e69;
+}
+
+.export-error {
+  margin: 10px 28px 0;
+}
+
 .eyebrow {
   color: #3f5f7c !important;
 }
