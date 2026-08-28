@@ -606,6 +606,11 @@ td.fill-delta-complete {
   background: #00ed4b !important;
 }
 
+td.fill-delta-mixed {
+  color: #000;
+  background: #ff7900 !important;
+}
+
 td.fill-delta-blank {
   color: #000;
   background: #b8b8b8 !important;

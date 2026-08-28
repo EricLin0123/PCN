@@ -198,26 +198,79 @@ LEFT JOIN risk_assessment ra ON ra.pcn_id = p.id
 LEFT JOIN risk_assessment_ti_part rp ON rp.risk_assessment_id = ra.id
 GROUP BY p.id;
 
-CREATE VIEW IF NOT EXISTS pcn_executive_status AS
+-- Delta permits repeated submissions under the same PCN suffix. The latest
+-- attempt for each suffix is authoritative; older attempts remain as history.
+DROP VIEW IF EXISTS pcn_executive_status;
+DROP VIEW IF EXISTS pcn_delta_status;
+
+CREATE VIEW pcn_delta_status AS
+WITH ranked_attempts AS (
+  SELECT
+    df.*,
+    row_number() OVER (
+      PARTITION BY df.pcn_id, upper(
+        CASE
+          WHEN instr(replace(replace(trim(COALESCE(df.delta_pcn_suffix, '')), '（', '('), ' ', ''), '(') > 0
+            THEN substr(
+              replace(replace(trim(COALESCE(df.delta_pcn_suffix, '')), '（', '('), ' ', ''),
+              1,
+              instr(replace(replace(trim(COALESCE(df.delta_pcn_suffix, '')), '（', '('), ' ', ''), '(') - 1
+            )
+          ELSE replace(replace(trim(COALESCE(df.delta_pcn_suffix, '')), '（', '('), ' ', '')
+        END
+      )
+      ORDER BY
+        CASE WHEN NULLIF(trim(df.apply_date), '') IS NULL THEN 0 ELSE 1 END DESC,
+        df.apply_date DESC,
+        df.id DESC
+    ) AS attempt_rank
+  FROM delta_form df
+  WHERE df.pcn_id IS NOT NULL
+), current_attempts AS (
+  SELECT
+    pcn_id,
+    CASE
+      WHEN upper(COALESCE(NULLIF(trim(form_status), ''), 'BLANK')) IN ('CANCEL', 'PROCESSING', 'REJECT', 'COMPLETE')
+        THEN upper(COALESCE(NULLIF(trim(form_status), ''), 'BLANK'))
+      ELSE 'BLANK'
+    END AS current_status
+  FROM ranked_attempts
+  WHERE attempt_rank = 1
+)
 SELECT
   p.id AS pcn_id,
   CASE
-    WHEN EXISTS (SELECT 1 FROM delta_form df WHERE df.pcn_id = p.id AND upper(df.form_status) = 'REJECT') THEN 'REJECTED'
+    WHEN count(a.current_status) = 0 THEN 'BLANK'
+    WHEN count(DISTINCT a.current_status) > 1 THEN 'MIXED'
+    ELSE max(a.current_status)
+  END AS delta_status,
+  max(CASE WHEN a.current_status = 'REJECT' THEN 1 ELSE 0 END) AS has_reject,
+  max(CASE WHEN a.current_status = 'PROCESSING' THEN 1 ELSE 0 END) AS has_processing,
+  max(CASE WHEN a.current_status = 'COMPLETE' THEN 1 ELSE 0 END) AS has_complete
+FROM pcn p
+LEFT JOIN current_attempts a ON a.pcn_id = p.id
+GROUP BY p.id;
+
+CREATE VIEW pcn_executive_status AS
+SELECT
+  p.id AS pcn_id,
+  CASE
+    WHEN current_delta.has_reject = 1 THEN 'REJECTED'
     WHEN ops.expected_risk = 'EOL' THEN 'EOL_EXCLUDED'
     WHEN ops.upload_state <> 'ALL_UPLOADED' AND ops.expected_risk = 'MINOR' THEN 'MINOR_READY_UPLOAD'
     WHEN ops.upload_state <> 'ALL_UPLOADED' AND ops.expected_risk = 'MAJOR' AND rac.ra_state <> 'FULL_RA' THEN 'MAJOR_BLOCKED_RA'
     WHEN ops.upload_state <> 'ALL_UPLOADED' AND ops.expected_risk = 'MAJOR' AND rac.ra_state = 'FULL_RA' THEN 'MAJOR_READY_UPLOAD'
     WHEN ops.upload_state = 'ALL_UPLOADED'
-      AND EXISTS (SELECT 1 FROM delta_form df WHERE df.pcn_id = p.id AND upper(df.form_status) = 'PROCESSING')
+      AND current_delta.has_processing = 1
       AND ops.expected_risk = 'MINOR' THEN 'MINOR_PENDING_APPROVAL'
     WHEN ops.upload_state = 'ALL_UPLOADED'
-      AND EXISTS (SELECT 1 FROM delta_form df WHERE df.pcn_id = p.id AND upper(df.form_status) = 'PROCESSING')
+      AND current_delta.has_processing = 1
       AND ops.expected_risk = 'MAJOR' THEN 'MAJOR_PENDING_APPROVAL'
     WHEN ops.upload_state = 'ALL_UPLOADED'
-      AND NOT EXISTS (SELECT 1 FROM delta_form df WHERE df.pcn_id = p.id AND upper(df.form_status) IN ('PROCESSING', 'REJECT'))
-      AND EXISTS (SELECT 1 FROM delta_form df WHERE df.pcn_id = p.id AND upper(df.form_status) = 'COMPLETE') THEN 'COMPLETED'
+      AND current_delta.delta_status = 'COMPLETE' THEN 'COMPLETED'
     ELSE 'OTHER'
   END AS executive_state
 FROM pcn p
 JOIN pcn_operational_status ops ON ops.pcn_id = p.id
-JOIN pcn_ra_coverage rac ON rac.pcn_id = p.id;
+JOIN pcn_ra_coverage rac ON rac.pcn_id = p.id
+JOIN pcn_delta_status current_delta ON current_delta.pcn_id = p.id;

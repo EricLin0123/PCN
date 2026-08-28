@@ -26,7 +26,7 @@ function applyFilters() {
 const exportFill: Record<string, string> = {
   MAJOR: 'FFFF0000', MINOR: 'FFFFFF00', EOL: 'FF9900FF', UNKNOWN: 'FFC8C8C8',
   ALL_UPLOADED: 'FF00F04B', PARTLY_UPLOADED: 'FFFFFF00', NOT_UPLOADED: 'FFFF0000',
-  COMPLETE: 'FF00F04B', PROCESSING: 'FFFFFF00', REJECT: 'FFFF0000', CANCEL: 'FF000000', BLANK: 'FFB8B8B8',
+  COMPLETE: 'FF00F04B', PROCESSING: 'FFFFFF00', REJECT: 'FFFF0000', CANCEL: 'FF000000', MIXED: 'FFFF7900', BLANK: 'FFB8B8B8',
   MATCH: 'FF00F04B', MISMATCH: 'FFFF008C', NOT_ON_DELTA: 'FFB8B8B8', NOT_APPLICABLE: 'FFB8B8B8',
   FULL_RA: 'FF00F04B', PARTLY_MISS_RA: 'FFFFFF00', MISS_ALL_RA: 'FFFF0000', NA: 'FF000000',
 }
@@ -130,7 +130,7 @@ async function exportToExcel() {
           <th><span class="column-heading">Change type</span><select v-model="changeType" class="column-filter" @change="applyFilters()"><option value="">(All)</option><option v-for="type in changeTypes" :key="type.id" :value="type.name">{{ type.name }}</option></select></th>
           <th><span class="column-heading">Expected risk</span><select v-model="risk" class="column-filter" @change="applyFilters()"><option value="">(All)</option><option>MAJOR</option><option>MINOR</option><option>EOL</option><option>UNKNOWN</option></select></th>
           <th><span class="column-heading">Upload state</span><select v-model="uploadState" class="column-filter" @change="applyFilters()"><option value="">(All)</option><option value="ALL_UPLOADED">All uploaded</option><option value="PARTLY_UPLOADED">Partly uploaded</option><option value="NOT_UPLOADED">Not uploaded</option></select></th>
-          <th><span class="column-heading">Delta status</span><select v-model="statusFilter" class="column-filter" @change="applyFilters()"><option value="">(All)</option><option>CANCEL</option><option>PROCESSING</option><option>REJECT</option><option>COMPLETE</option><option value="BLANK">Blank</option></select></th>
+          <th><span class="column-heading">Delta status</span><select v-model="statusFilter" class="column-filter" @change="applyFilters()"><option value="">(All)</option><option>CANCEL</option><option>PROCESSING</option><option>REJECT</option><option>COMPLETE</option><option>MIXED</option><option value="BLANK">Blank</option></select></th>
           <th><span class="column-heading">Risk alignment</span><select v-model="riskAlignment" class="column-filter" @change="applyFilters()"><option value="">(All)</option><option value="MISMATCH">Mismatch</option><option value="MATCH">Match</option><option value="NOT_ON_DELTA">Not on Delta</option><option value="NOT_APPLICABLE">Not applicable</option></select></th>
           <th><span class="column-heading">RA coverage</span><select v-model="raState" class="column-filter" @change="applyFilters()"><option value="">(All)</option><option value="FULL_RA">Full RA</option><option value="PARTLY_MISS_RA">Partly Miss RA</option><option value="MISS_ALL_RA">Miss all RA</option><option value="NA">NA</option></select></th>
         </tr></thead>
