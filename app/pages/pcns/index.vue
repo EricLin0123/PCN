@@ -53,6 +53,8 @@ async function exportToExcel() {
     sheet.columns = [
       { header: 'PCN Number', key: 'pcn', width: 18 },
       { header: 'Title', key: 'title', width: 55 },
+      { header: 'TI Affected Parts', key: 'tiAffectedParts', width: 55 },
+      { header: 'Delta Received Parts', key: 'deltaReceivedParts', width: 55 },
       { header: 'Change Type', key: 'changeType', width: 32 },
       { header: 'Expected Risk', key: 'risk', width: 17 },
       { header: 'Upload State', key: 'uploadState', width: 22 },
@@ -74,6 +76,8 @@ async function exportToExcel() {
       const row = sheet.addRow({
         pcn: String(pcn.pcn_number_base),
         title: pcn.title,
+        tiAffectedParts: pcn.ti_affected_parts || '',
+        deltaReceivedParts: pcn.delta_received_parts || '',
         changeType: pcn.change_type || 'Unspecified',
         risk: displayState(pcn.risk),
         uploadState: displayState(pcn.upload_state),
@@ -86,14 +90,16 @@ async function exportToExcel() {
         raCoveredParts: pcn.ra_state === 'NA' ? '' : pcn.ra_covered_parts,
       })
       row.getCell(1).numFmt = '@'
-      for (const [column, state] of [[4, pcn.risk], [5, pcn.upload_state], [8, pcn.delta_status], [9, pcn.risk_alignment], [11, pcn.ra_state]] as const) {
+      row.getCell(3).numFmt = '@'
+      row.getCell(4).numFmt = '@'
+      for (const [column, state] of [[6, pcn.risk], [7, pcn.upload_state], [10, pcn.delta_status], [11, pcn.risk_alignment], [13, pcn.ra_state]] as const) {
         const cell = row.getCell(column)
         cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: exportFill[state] || 'FFFFFFFF' } }
         cell.font = { bold: true, color: { argb: ['MAJOR', 'REJECT', 'CANCEL', 'MISMATCH', 'MISS_ALL_RA', 'NA'].includes(state) ? 'FFFFFFFF' : 'FF000000' } }
       }
     }
 
-    sheet.autoFilter = { from: 'A1', to: 'L1' }
+    sheet.autoFilter = { from: 'A1', to: 'N1' }
     sheet.eachRow((row, rowNumber) => {
       if (rowNumber > 1) row.height = 21
       row.eachCell((cell) => {

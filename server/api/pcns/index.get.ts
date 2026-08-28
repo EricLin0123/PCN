@@ -55,6 +55,29 @@ export default defineEventHandler((event) => {
   const items = all(`SELECT p.id, p.pcn_number_base, p.notification_date, p.title,
       ct.name AS change_type, ops.expected_risk AS risk,
       (SELECT count(*) FROM pcn_ti_part pp WHERE pp.pcn_id = p.id) AS part_count,
+      (SELECT group_concat(affected.display_part_number, '; ')
+       FROM (
+         SELECT tp2.display_part_number
+         FROM pcn_ti_part pp2
+         JOIN ti_part tp2 ON tp2.id = pp2.ti_part_id
+         WHERE pp2.pcn_id = p.id
+         ORDER BY tp2.normalized_part_number
+       ) affected) AS ti_affected_parts,
+      (SELECT group_concat(received.display_part_number, '; ')
+       FROM (
+         SELECT tp3.display_part_number
+         FROM pcn_ti_part pp3
+         JOIN ti_part tp3 ON tp3.id = pp3.ti_part_id
+         WHERE pp3.pcn_id = p.id
+           AND EXISTS (
+             SELECT 1
+             FROM delta_form df3
+             JOIN delta_form_item dfi3 ON dfi3.delta_form_id = df3.id
+             WHERE df3.pcn_id = p.id
+               AND dfi3.ti_part_number_normalized = tp3.normalized_part_number
+           )
+         ORDER BY tp3.normalized_part_number
+       ) received) AS delta_received_parts,
       (SELECT count(*) FROM delta_form df WHERE df.pcn_id = p.id) AS form_count,
       (SELECT count(*) FROM risk_assessment ra WHERE ra.pcn_id = p.id) AS ra_count,
       (SELECT group_concat(DISTINCT COALESCE(df.form_status, 'UNSPECIFIED')) FROM delta_form df WHERE df.pcn_id = p.id) AS statuses,
