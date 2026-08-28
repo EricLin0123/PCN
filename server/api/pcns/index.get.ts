@@ -23,7 +23,7 @@ export default defineEventHandler((event) => {
     params.push(`%${search}%`, `%${search}%`, `%${search.toUpperCase()}%`, `%${search}%`)
   }
   if (risk) {
-    where.push("COALESCE(p.risk_override, ct.default_risk, 'UNKNOWN') = ?")
+    where.push('ops.expected_risk = ?')
     params.push(risk)
   }
   if (changeType) {
@@ -53,7 +53,7 @@ export default defineEventHandler((event) => {
   const clause = where.length ? `WHERE ${where.join(' AND ')}` : ''
   const total = get<{ count: number }>(`SELECT count(*) AS count FROM pcn p LEFT JOIN change_type ct ON ct.id = p.change_type_id JOIN pcn_operational_status ops ON ops.pcn_id = p.id JOIN pcn_ra_coverage rac ON rac.pcn_id = p.id JOIN pcn_executive_status ex ON ex.pcn_id = p.id JOIN pcn_delta_status pds ON pds.pcn_id = p.id ${clause}`, ...params)?.count || 0
   const items = all(`SELECT p.id, p.pcn_number_base, p.notification_date, p.title,
-      ct.name AS change_type, COALESCE(p.risk_override, ct.default_risk, 'UNKNOWN') AS risk,
+      ct.name AS change_type, ops.expected_risk AS risk,
       (SELECT count(*) FROM pcn_ti_part pp WHERE pp.pcn_id = p.id) AS part_count,
       (SELECT count(*) FROM delta_form df WHERE df.pcn_id = p.id) AS form_count,
       (SELECT count(*) FROM risk_assessment ra WHERE ra.pcn_id = p.id) AS ra_count,

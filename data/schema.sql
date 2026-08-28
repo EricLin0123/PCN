@@ -7,6 +7,19 @@ CREATE TABLE IF NOT EXISTS change_type (
     CHECK (default_risk IN ('MAJOR', 'MINOR', 'EOL', 'UNKNOWN'))
 );
 
+-- Ordered, data-driven title rules supplement the change-type defaults.
+-- Higher priority wins when more than one phrase matches a title.
+CREATE TABLE IF NOT EXISTS risk_title_rule (
+  id INTEGER PRIMARY KEY,
+  title_contains TEXT NOT NULL UNIQUE,
+  expected_risk TEXT NOT NULL CHECK (expected_risk IN ('MAJOR', 'MINOR', 'EOL', 'UNKNOWN')),
+  priority INTEGER NOT NULL DEFAULT 100,
+  enabled INTEGER NOT NULL DEFAULT 1 CHECK (enabled IN (0, 1))
+);
+
+INSERT OR IGNORE INTO risk_title_rule(title_contains, expected_risk, priority)
+VALUES ('RBAF', 'MAJOR', 100);
+
 CREATE TABLE IF NOT EXISTS pcn (
   id INTEGER PRIMARY KEY,
   pcn_number_base TEXT NOT NULL UNIQUE
@@ -151,13 +164,45 @@ LEFT JOIN pcn_ti_part pp ON pp.pcn_id = p.id
 LEFT JOIN ti_part tp ON tp.id = pp.ti_part_id
 GROUP BY p.id;
 
-CREATE VIEW IF NOT EXISTS pcn_operational_status AS
+DROP VIEW IF EXISTS pcn_executive_status;
+DROP VIEW IF EXISTS pcn_ra_coverage;
+DROP VIEW IF EXISTS pcn_operational_status;
+DROP VIEW IF EXISTS pcn_expected_risk;
+
+CREATE VIEW pcn_expected_risk AS
+SELECT
+  p.id AS pcn_id,
+  COALESCE(
+    p.risk_override,
+    (SELECT rule.expected_risk
+     FROM risk_title_rule rule
+     WHERE rule.enabled = 1
+       AND instr(upper(p.title), upper(rule.title_contains)) > 0
+     ORDER BY rule.priority DESC, rule.id
+     LIMIT 1),
+    ct.default_risk,
+    'UNKNOWN'
+  ) AS expected_risk,
+  CASE
+    WHEN p.risk_override IS NOT NULL THEN 'MANUAL_OVERRIDE'
+    WHEN EXISTS (
+      SELECT 1 FROM risk_title_rule rule
+      WHERE rule.enabled = 1
+        AND instr(upper(p.title), upper(rule.title_contains)) > 0
+    ) THEN 'TITLE_RULE'
+    WHEN ct.default_risk IS NOT NULL THEN 'CHANGE_TYPE'
+    ELSE 'UNKNOWN'
+  END AS risk_source
+FROM pcn p
+LEFT JOIN change_type ct ON ct.id = p.change_type_id;
+
+CREATE VIEW pcn_operational_status AS
 SELECT
   p.id AS pcn_id,
   coverage.total_parts,
   coverage.uploaded_parts,
   coverage.upload_state,
-  COALESCE(p.risk_override, ct.default_risk, 'UNKNOWN') AS expected_risk,
+  expected.expected_risk,
   (SELECT group_concat(risk, ', ')
    FROM (SELECT DISTINCT upper(df.notify) AS risk
          FROM delta_form df
@@ -165,34 +210,36 @@ SELECT
            AND upper(df.notify) IN ('MAJOR', 'MINOR')
          ORDER BY risk)) AS delta_risks,
   CASE
-    WHEN COALESCE(p.risk_override, ct.default_risk, 'UNKNOWN') = 'EOL' THEN 'NOT_APPLICABLE'
-    WHEN COALESCE(p.risk_override, ct.default_risk, 'UNKNOWN') NOT IN ('MAJOR', 'MINOR') THEN 'REVIEW'
+    WHEN expected.expected_risk = 'EOL' THEN 'NOT_APPLICABLE'
+    WHEN expected.expected_risk NOT IN ('MAJOR', 'MINOR') THEN 'REVIEW'
     WHEN NOT EXISTS (SELECT 1 FROM delta_form df WHERE df.delta_pcn_number_base = p.pcn_number_base) THEN 'NOT_ON_DELTA'
     WHEN EXISTS (
       SELECT 1 FROM delta_form df
       WHERE df.delta_pcn_number_base = p.pcn_number_base
         AND upper(COALESCE(df.notify, '')) IN ('MAJOR', 'MINOR')
-        AND upper(df.notify) <> COALESCE(p.risk_override, ct.default_risk, 'UNKNOWN')
+        AND upper(df.notify) <> expected.expected_risk
     ) THEN 'MISMATCH'
     ELSE 'MATCH'
   END AS risk_alignment
 FROM pcn p
 LEFT JOIN change_type ct ON ct.id = p.change_type_id
+JOIN pcn_expected_risk expected ON expected.pcn_id = p.id
 JOIN pcn_upload_coverage coverage ON coverage.pcn_id = p.id;
 
-CREATE VIEW IF NOT EXISTS pcn_ra_coverage AS
+CREATE VIEW pcn_ra_coverage AS
 SELECT
   p.id AS pcn_id,
   coverage.total_parts,
   count(DISTINCT rp.ti_part_id) AS ra_covered_parts,
   CASE
-    WHEN COALESCE(p.risk_override, ct.default_risk, 'UNKNOWN') <> 'MAJOR' THEN 'NA'
+    WHEN expected.expected_risk <> 'MAJOR' THEN 'NA'
     WHEN count(DISTINCT rp.ti_part_id) = 0 THEN 'MISS_ALL_RA'
     WHEN count(DISTINCT rp.ti_part_id) < coverage.total_parts THEN 'PARTLY_MISS_RA'
     ELSE 'FULL_RA'
   END AS ra_state
 FROM pcn p
 LEFT JOIN change_type ct ON ct.id = p.change_type_id
+JOIN pcn_expected_risk expected ON expected.pcn_id = p.id
 JOIN pcn_upload_coverage coverage ON coverage.pcn_id = p.id
 LEFT JOIN risk_assessment ra ON ra.pcn_id = p.id
 LEFT JOIN risk_assessment_ti_part rp ON rp.risk_assessment_id = ra.id

@@ -65,7 +65,7 @@ async function deleteAssessment(assessment: any) {
           <div v-if="data.pcn.notes" class="notes"><strong>Internal notes</strong><p>{{ data.pcn.notes }}</p></div>
         </article>
         <article class="panel parts-panel"><div class="panel-heading"><div><h2>TI affected parts</h2><p>{{ data.parts.length }} authoritative relationships</p></div><Icon name="lucide:cpu" /></div>
-          <ol v-if="data.parts.length" class="ti-part-list"><li v-for="part in data.parts" :key="part.id"><span>{{ part.display_part_number }}</span></li></ol>
+          <ol v-if="data.parts.length" class="ti-part-list"><li v-for="part in data.parts" :key="part.id" :class="part.is_on_delta ? 'ti-part-on-delta' : 'ti-part-not-on-delta'"><span>{{ part.display_part_number }}</span></li></ol>
           <EmptyState v-else title="No TI parts" text="No authoritative TI affected parts are recorded for this PCN." icon="lucide:cpu" />
         </article>
       </section>

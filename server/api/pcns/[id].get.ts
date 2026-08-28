@@ -4,13 +4,20 @@ export default defineEventHandler((event) => {
   const id = Number(getRouterParam(event, 'id'))
   const pcn = get<any>(`SELECT p.id, p.pcn_number_base, p.notification_date, p.title, p.change_type_id,
       ct.name AS change_type, ct.default_risk, p.risk_override,
-      COALESCE(p.risk_override, ct.default_risk, 'UNKNOWN') AS expected_risk,
+      ops.expected_risk,
       p.notes, p.created_at, p.updated_at, ops.total_parts, ops.uploaded_parts,
       ops.upload_state, ops.delta_risks, ops.risk_alignment
     FROM pcn p LEFT JOIN change_type ct ON ct.id = p.change_type_id
     JOIN pcn_operational_status ops ON ops.pcn_id = p.id WHERE p.id = ?`, id)
   if (!pcn) throw createError({ statusCode: 404, statusMessage: 'PCN not found' })
-  const parts = all(`SELECT tp.id, tp.display_part_number, tp.normalized_part_number
+  const parts = all(`SELECT tp.id, tp.display_part_number, tp.normalized_part_number,
+      EXISTS (
+        SELECT 1
+        FROM delta_form df
+        JOIN delta_form_item dfi ON dfi.delta_form_id = df.id
+        WHERE df.pcn_id = pp.pcn_id
+          AND dfi.ti_part_number_normalized = tp.normalized_part_number
+      ) AS is_on_delta
     FROM pcn_ti_part pp JOIN ti_part tp ON tp.id = pp.ti_part_id
     WHERE pp.pcn_id = ? ORDER BY tp.normalized_part_number`, id)
   const forms = all<any>(`SELECT df.* FROM delta_form df WHERE df.pcn_id = ? ORDER BY df.apply_date DESC, df.id DESC`, id)

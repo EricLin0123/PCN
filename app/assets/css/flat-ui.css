@@ -459,6 +459,22 @@ textarea {
   background: #eef3f7;
 }
 
+.ti-part-list li.ti-part-on-delta,
+.ti-part-list li.ti-part-on-delta::before {
+  background: #00ed4b;
+  color: #000;
+}
+
+.ti-part-list li.ti-part-not-on-delta,
+.ti-part-list li.ti-part-not-on-delta::before {
+  background: #f00000;
+  color: #fff;
+}
+
+.ti-part-list li.ti-part-not-on-delta span {
+  color: #fff;
+}
+
 .ti-part-list li::before {
   content: counter(ti-part);
   display: grid;
