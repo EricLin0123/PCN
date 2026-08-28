@@ -19,8 +19,14 @@ export default defineEventHandler((event) => {
     where.push(`(p.pcn_number_base LIKE ? OR p.title LIKE ? OR EXISTS (
       SELECT 1 FROM pcn_ti_part pp JOIN ti_part tp ON tp.id = pp.ti_part_id
       WHERE pp.pcn_id = p.id AND tp.normalized_part_number LIKE ?) OR EXISTS (
+      SELECT 1 FROM delta_form dfs
+      JOIN delta_form_item dfis ON dfis.delta_form_id = dfs.id
+      LEFT JOIN delta_part dps ON dps.id = dfis.delta_part_id
+      WHERE dfs.pcn_id = p.id
+        AND (dfis.ti_part_number_normalized LIKE ? OR dps.normalized_part_number LIKE ?)) OR EXISTS (
       SELECT 1 FROM risk_assessment ra WHERE ra.pcn_id = p.id AND ra.ra_number LIKE ?))`)
-    params.push(`%${search}%`, `%${search}%`, `%${search.toUpperCase()}%`, `%${search}%`)
+    const partSearch = `%${search.toUpperCase()}%`
+    params.push(`%${search}%`, `%${search}%`, partSearch, partSearch, partSearch, `%${search}%`)
   }
   if (risk) {
     where.push('ops.expected_risk = ?')
