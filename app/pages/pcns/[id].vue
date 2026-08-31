@@ -12,6 +12,12 @@ const emailCopyStatus = ref('')
 const form = reactive<any>({})
 const cscForm = reactive({ apply_date: '', form_no: '', pcn_no: '' })
 const savingCsc = ref(false)
+const deletingCsc = ref(false)
+const cscUploadState = computed(() => data.value?.cscUpload?.confirmed_at
+  ? 'CONFIRMED'
+  : data.value?.cscUpload
+    ? 'CSC_UPLOADED'
+    : data.value?.pcn.upload_state === 'ALL_UPLOADED' ? 'NA' : 'NOT_UPLOADED')
 const newRa = reactive({ ra_number: '', workbook_filename: '', part_numbers: [] as string[] })
 const raRequests = computed(() => {
   if (data.value?.pcn.expected_risk !== 'MAJOR') return []
@@ -103,6 +109,16 @@ async function setConfirmation(confirmed: boolean) {
     notify(confirmed ? 'Upload confirmed by admin.' : 'Admin confirmation revoked.')
   } catch (e: any) { notify(e.data?.statusMessage || 'Unable to change confirmation.', 'error') }
 }
+async function deleteCscUpload() {
+  if (!confirm('Delete this CSC upload record? This also removes its admin confirmation.')) return
+  deletingCsc.value = true
+  try {
+    await $fetch(`/api/pcns/${route.params.id}/csc-upload`, { method: 'DELETE' })
+    await refresh()
+    notify('CSC upload record deleted.')
+  } catch (e: any) { notify(e.data?.statusMessage || 'Unable to delete the CSC upload record.', 'error') }
+  finally { deletingCsc.value = false }
+}
 </script>
 
 <template>
@@ -125,7 +141,7 @@ async function setConfirmation(confirmed: boolean) {
 
       <section class="detail-grid">
         <article class="panel facts-panel"><div class="panel-heading"><div><h2>Notification facts</h2><p>Authoritative PCN metadata</p></div><Icon name="lucide:file-text" /></div>
-          <dl class="facts"><div><dt>Notification date</dt><dd>{{ data.pcn.notification_date || 'Not set' }}</dd></div><div><dt>Change type</dt><dd>{{ data.pcn.change_type || 'Unspecified' }}</dd></div><div><dt>Expected risk</dt><dd><RiskBadge :risk="data.pcn.expected_risk" /></dd></div><div><dt>Manual override</dt><dd>{{ data.pcn.risk_override || 'None' }}</dd></div><div><dt>Upload state</dt><dd><StateBadge :state="data.pcn.upload_state" /> <small class="coverage-count">{{ data.pcn.uploaded_parts }}/{{ data.pcn.delta_relevant_parts }} Delta parts</small></dd></div><div><dt>CSC verification</dt><dd><StateBadge :state="data.cscUpload?.confirmed_at ? 'CONFIRMED' : data.cscUpload ? 'CSC_UPLOADED' : 'NOT_CSC_UPLOADED'" /></dd></div><div><dt>Delta risk check</dt><dd><StateBadge :state="data.pcn.risk_alignment" /> <small v-if="data.pcn.delta_risks" class="coverage-count">Delta: {{ data.pcn.delta_risks }}</small></dd></div></dl>
+          <dl class="facts"><div><dt>Notification date</dt><dd>{{ data.pcn.notification_date || 'Not set' }}</dd></div><div><dt>Change type</dt><dd>{{ data.pcn.change_type || 'Unspecified' }}</dd></div><div><dt>Expected risk</dt><dd><RiskBadge :risk="data.pcn.expected_risk" /></dd></div><div><dt>Manual override</dt><dd>{{ data.pcn.risk_override || 'None' }}</dd></div><div><dt>Upload state</dt><dd><StateBadge :state="data.pcn.upload_state" /> <small class="coverage-count">{{ data.pcn.uploaded_parts }}/{{ data.pcn.delta_relevant_parts }} Delta parts</small></dd></div><div><dt>CSC verification</dt><dd><StateBadge :state="cscUploadState" /></dd></div><div><dt>Delta risk check</dt><dd><StateBadge :state="data.pcn.risk_alignment" /> <small v-if="data.pcn.delta_risks" class="coverage-count">Delta: {{ data.pcn.delta_risks }}</small></dd></div></dl>
           <div v-if="data.pcn.notes" class="notes"><strong>Internal notes</strong><p>{{ data.pcn.notes }}</p></div>
         </article>
         <article class="panel parts-panel"><div class="panel-heading"><div><h2>TI affected parts</h2><p>{{ data.parts.length }} authoritative relationships · Total NR {{ formatRevenue(data.netRevenue) }}</p></div><Icon name="lucide:cpu" /></div>
@@ -136,7 +152,7 @@ async function setConfirmation(confirmed: boolean) {
       </section>
 
       <section v-if="data.cscUpload || data.pcn.upload_state !== 'ALL_UPLOADED'" class="panel csc-upload-panel">
-        <div class="section-title"><div><p class="eyebrow">CSC handoff</p><h2>Upload verification</h2></div><StateBadge :state="data.cscUpload?.confirmed_at ? 'CONFIRMED' : data.cscUpload ? 'CSC_UPLOADED' : 'NOT_CSC_UPLOADED'" /></div>
+        <div class="section-title"><div><p class="eyebrow">CSC handoff</p><h2>Upload verification</h2></div><StateBadge :state="cscUploadState" /></div>
         <p class="csc-explanation">CSC records its Delta submission here. This claim stays separate from imported Delta evidence until an admin confirms it.</p>
         <form class="csc-upload-form" @submit.prevent="saveCscUpload">
           <label><span>APPLY_DATE</span><input v-model="cscForm.apply_date" type="date" required :disabled="Boolean(data.cscUpload?.confirmed_at)" /></label>
@@ -147,6 +163,7 @@ async function setConfirmation(confirmed: boolean) {
         <div v-if="data.cscUpload" class="csc-audit">
           <span>Marked by <strong>{{ data.cscUpload.uploaded_by || 'development user' }}</strong> at {{ data.cscUpload.uploaded_at }}</span>
           <span v-if="data.cscUpload.confirmed_at">Confirmed by <strong>{{ data.cscUpload.confirmed_by || 'development user' }}</strong> at {{ data.cscUpload.confirmed_at }}</span>
+          <button class="icon-button danger" type="button" title="Delete CSC upload record" aria-label="Delete CSC upload record" :disabled="deletingCsc" @click="deleteCscUpload"><Icon :name="deletingCsc ? 'lucide:loader-circle' : 'lucide:trash-2'" :class="{ spin: deletingCsc }" /></button>
           <button v-if="isAdmin" class="button" :class="data.cscUpload.confirmed_at ? 'secondary' : 'primary'" type="button" @click="setConfirmation(!data.cscUpload.confirmed_at)"><Icon :name="data.cscUpload.confirmed_at ? 'lucide:shield-x' : 'lucide:badge-check'" /> {{ data.cscUpload.confirmed_at ? 'Revoke confirmation' : 'Confirm uploaded' }}</button>
           <small v-else>Only an admin can confirm this upload.</small>
         </div>

@@ -212,6 +212,40 @@ CREATE INDEX IF NOT EXISTS idx_pcn_date ON pcn(notification_date DESC);
 CREATE INDEX IF NOT EXISTS idx_pcn_change_type ON pcn(change_type_id);
 CREATE INDEX IF NOT EXISTS idx_pcn_ti_part_part ON pcn_ti_part(ti_part_id);
 CREATE INDEX IF NOT EXISTS idx_material_month_revenue_month ON material_month_revenue(revenue_month);
+
+-- Persistent lifetime-revenue snapshot for the Parts page. Revenue and part
+-- changes invalidate the entire snapshot because they can change every rank.
+CREATE TABLE IF NOT EXISTS part_nr_cache (
+  ti_part_id INTEGER PRIMARY KEY REFERENCES ti_part(id) ON DELETE CASCADE,
+  net_revenue REAL NOT NULL,
+  rank_desc INTEGER NOT NULL UNIQUE,
+  rank_asc INTEGER NOT NULL UNIQUE,
+  calculated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TRIGGER IF NOT EXISTS invalidate_part_nr_cache_after_revenue_insert
+AFTER INSERT ON material_month_revenue
+BEGIN
+  DELETE FROM part_nr_cache;
+END;
+
+CREATE TRIGGER IF NOT EXISTS invalidate_part_nr_cache_after_revenue_update
+AFTER UPDATE ON material_month_revenue
+BEGIN
+  DELETE FROM part_nr_cache;
+END;
+
+CREATE TRIGGER IF NOT EXISTS invalidate_part_nr_cache_after_revenue_delete
+AFTER DELETE ON material_month_revenue
+BEGIN
+  DELETE FROM part_nr_cache;
+END;
+
+CREATE TRIGGER IF NOT EXISTS invalidate_part_nr_cache_after_part_insert
+AFTER INSERT ON ti_part
+BEGIN
+  DELETE FROM part_nr_cache;
+END;
 CREATE INDEX IF NOT EXISTS idx_ti_part_sbe1_sbe1 ON ti_part_sbe1(sbe1_id);
 CREATE INDEX IF NOT EXISTS idx_ti_part_organization_sbe ON ti_part_organization(sbe_id);
 CREATE INDEX IF NOT EXISTS idx_ti_part_organization_sbe1 ON ti_part_organization(sbe1_id);

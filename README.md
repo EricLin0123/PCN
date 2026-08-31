@@ -52,16 +52,8 @@ for `npm run dev`, so local development remains frictionless.
 ### Enable operator/admin login
 
 Authentication is enabled by default in a production build. To exercise it in
-development, set these environment variables before starting the app:
-
-```powershell
-$env:PCN_AUTH_ENABLED="true"
-$env:PCN_ADMIN_USERNAME="admin"
-$env:PCN_ADMIN_PASSWORD="replace-with-a-long-password"
-$env:PCN_OPERATOR_USERNAME="csc"
-$env:PCN_OPERATOR_PASSWORD="replace-with-another-long-password"
-npm run dev
-```
+development, copy `.env.example` to `.env`, replace both passwords, and start
+the app. The local `.env` is ignored by Git and must never be committed.
 
 The two accounts are created only if their usernames do not already exist;
 restarting does not overwrite an existing password. Passwords are stored as

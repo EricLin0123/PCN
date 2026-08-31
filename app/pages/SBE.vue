@@ -1,6 +1,29 @@
 <script setup lang="ts">
 const search = ref('')
 const { data, status, error, refresh } = await useFetch<any>('/api/organization')
+const { isAdmin } = useAuth()
+const savingChampionId = ref<number | null>(null)
+const message = ref('')
+const messageType = ref('success')
+
+function notify(text: string, type = 'success') {
+  message.value = text
+  messageType.value = type
+  setTimeout(() => { message.value = '' }, 3500)
+}
+
+async function saveChampion(group: any) {
+  savingChampionId.value = group.id
+  try {
+    await $fetch(`/api/sbe1/${group.id}/champion`, { method: 'PATCH', body: { champion_email: group.championEmail } })
+    await refresh()
+    notify(`Champion email updated for ${group.name}.`)
+  } catch (saveError: any) {
+    notify(saveError.data?.statusMessage || 'Unable to update champion email.', 'error')
+  } finally {
+    savingChampionId.value = null
+  }
+}
 
 const filteredOrganizations = computed(() => {
   const term = search.value.trim().toLowerCase()
@@ -24,10 +47,11 @@ const filteredOrganizations = computed(() => {
     <header class="page-header">
       <div>
         <p class="eyebrow">Ownership</p>
-        <h1>Organization</h1>
+        <h1>SBE</h1>
         <p>SBE hierarchy, SBE-1 champions, and SBE-2 teams.</p>
       </div>
     </header>
+    <Transition name="toast"><div v-if="message" class="toast" :class="messageType"><Icon :name="messageType === 'success' ? 'lucide:circle-check' : 'lucide:circle-alert'" />{{ message }}</div></Transition>
 
     <section v-if="data" class="organization-metrics">
       <div><span>SBE</span><strong>{{ data.totals.sbe_count.toLocaleString() }}</strong></div>
@@ -45,7 +69,7 @@ const filteredOrganizations = computed(() => {
       }}</span>
     </section>
 
-    <div v-if="error" class="alert error">Organization chart could not be loaded. <button @click="refresh()">Try
+    <div v-if="error" class="alert error">SBE hierarchy could not be loaded. <button @click="refresh()">Try
         again</button></div>
     <div v-else-if="status === 'pending' && !data" class="organization-grid">
       <div v-for="i in 3" :key="i" class="skeleton organization-skeleton" />
@@ -62,11 +86,14 @@ const filteredOrganizations = computed(() => {
         <div class="sbe1-branches">
           <article v-for="group in sbe.sbe1" :key="group.id" class="sbe1-branch">
             <header class="sbe1-node">
-              <div><span>SBE-1</span><strong>{{ group.name }}</strong> <strong v-if="group.championEmail">
-                  <Icon name="lucide:mail" /> {{ group.championEmail }}
-                </strong><span v-else class="champion-missing">
-                  <Icon name="lucide:user-round-x" /> Champion not assigned
-                </span></div>
+              <div><span>SBE-1</span><strong>{{ group.name }}</strong>
+                <form v-if="isAdmin" class="champion-email-editor" @submit.prevent="saveChampion(group)">
+                  <input v-model="group.championEmail" type="email" aria-label="Champion email" placeholder="Champion not assigned" />
+                  <button class="icon-button save" title="Save champion email" :disabled="savingChampionId === group.id"><Icon :name="savingChampionId === group.id ? 'lucide:loader-circle' : 'lucide:save'" :class="{ spin: savingChampionId === group.id }" /></button>
+                </form>
+                <strong v-else-if="group.championEmail" class="champion-email"><Icon name="lucide:mail" /> {{ group.championEmail }}</strong>
+                <span v-if="!group.championEmail" class="champion-missing"><Icon name="lucide:user-round-x" /> Champion not assigned</span>
+              </div>
               <small>{{ group.partCount.toLocaleString() }} part{{ group.partCount === 1 ? '' : 's' }}</small>
             </header>
 
@@ -81,7 +108,7 @@ const filteredOrganizations = computed(() => {
         </div>
       </article>
     </section>
-    <EmptyState v-else-if="data" title="No matching organization" text="Try another SBE, champion, or team name."
+    <EmptyState v-else-if="data" title="No matching SBE" text="Try another SBE, champion, or team name."
       icon="lucide:search-x" />
   </div>
 </template>

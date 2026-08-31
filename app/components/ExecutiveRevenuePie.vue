@@ -1,7 +1,10 @@
 <script setup lang="ts">
 const props = defineProps<{
   title: string
-  items: Array<{ pcnNumber: string; netRevenue: number }>
+  items: Array<{ id: number; pcnNumber: string; netRevenue: number }>
+}>()
+const emit = defineEmits<{
+  select: [item: { id: number; pcnNumber: string; netRevenue: number }]
 }>()
 
 const canvas = ref<HTMLCanvasElement | null>(null)
@@ -29,6 +32,14 @@ async function renderChart() {
     options: {
       responsive: true,
       maintainAspectRatio: false,
+      onClick(_event: unknown, elements: Array<{ index: number }>) {
+        const index = elements[0]?.index
+        const item = index === undefined ? undefined : props.items[index]
+        if (item) emit('select', item)
+      },
+      onHover(_event: unknown, elements: unknown[]) {
+        if (canvas.value) canvas.value.style.cursor = elements.length ? 'pointer' : 'default'
+      },
       animation: { duration: 900, easing: 'easeOutQuart', animateRotate: true, animateScale: true },
       plugins: {
         legend: { display: false },
@@ -56,7 +67,7 @@ onBeforeUnmount(() => chart?.destroy())
 <template>
   <article class="panel executive-chart-card">
     <header><div><p class="eyebrow">Positive NR only</p><h2>{{ title }}</h2></div><strong>{{ items.length }} PCN{{ items.length === 1 ? '' : 's' }}</strong></header>
-    <div v-if="items.length" class="executive-chart-canvas"><canvas ref="canvas" /><small>Hover a slice to see the PCN, NR, and percentage.</small></div>
+    <div v-if="items.length" class="executive-chart-canvas"><canvas ref="canvas" /><small>Click a slice to open its PCN. Hover to see NR and percentage.</small></div>
     <EmptyState v-else title="No positive NR" text="No PCNs in this queue have NR greater than $0 for this period." icon="lucide:chart-pie" />
   </article>
 </template>

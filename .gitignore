@@ -3,6 +3,9 @@
 node_modules/
 .nuxt/
 .output/
+.env
+.env.*
+!.env.example
 data/pcn.db-wal
 data/pcn.db-shm
 *.log
