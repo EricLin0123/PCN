@@ -122,11 +122,6 @@
   background: #edf0f4;
 }
 
-.mismatch-panel {
-  padding: 22px 22px 8px;
-  margin-bottom: 18px;
-}
-
 .filter-panel {
   grid-template-columns: minmax(220px, 1fr) repeat(5, minmax(125px, 165px));
 }

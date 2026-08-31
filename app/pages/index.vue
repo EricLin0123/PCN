@@ -56,25 +56,6 @@ const stateCards = computed(() => [
         </article>
       </section>
 
-      <section class="panel mismatch-panel">
-        <div class="panel-heading"><div><h2>Risk mismatches requiring review</h2><p>Expected risk from TI change type compared with Delta NOTIFY</p></div><NuxtLink :to="{ path: '/pcns', query: { riskAlignment: 'MISMATCH' } }">View all {{ data.totals.riskMismatches }} <Icon name="lucide:arrow-right" /></NuxtLink></div>
-        <div class="table-wrap"><table><thead><tr><th>PCN number</th><th>Title</th><th>Expected</th><th>Delta label</th><th>Upload coverage</th><th /></tr></thead><tbody>
-          <tr v-for="pcn in data.mismatches" :key="pcn.id"><td><NuxtLink :to="`/pcns/${pcn.id}`" class="mono-link">{{ pcn.pcn_number_base }}</NuxtLink></td><td class="title-cell">{{ pcn.title }}</td><td class="fill-cell" :class="`fill-${pcn.expected_risk.toLowerCase()}`"><RiskBadge :risk="pcn.expected_risk" /></td><td class="fill-cell fill-delta"><span class="status-pill">{{ pcn.delta_risks }}</span></td><td class="fill-cell" :class="`fill-${pcn.upload_state.toLowerCase().replaceAll('_', '-')}`"><StateBadge :state="pcn.upload_state" /> <small class="coverage-count">{{ pcn.uploaded_parts }}/{{ pcn.delta_relevant_parts }}</small></td><td><NuxtLink :to="`/pcns/${pcn.id}`" class="icon-button"><Icon name="lucide:chevron-right" /></NuxtLink></td></tr>
-        </tbody></table></div>
-      </section>
-
-      <section class="panel recent-panel">
-        <div class="panel-heading"><div><h2>Recent notifications</h2><p>Latest PCNs by notification date</p></div><NuxtLink to="/pcns">View all <Icon name="lucide:arrow-right" /></NuxtLink></div>
-        <div class="table-wrap">
-          <table><thead><tr><th>PCN number</th><th>Title</th><th>Date</th><th>Risk</th><th>TI parts</th><th /></tr></thead>
-            <tbody><tr v-for="pcn in data.recent" :key="pcn.id">
-              <td><NuxtLink :to="`/pcns/${pcn.id}`" class="mono-link">{{ pcn.pcn_number_base }}</NuxtLink></td>
-              <td class="title-cell">{{ pcn.title }}</td><td>{{ pcn.notification_date || '—' }}</td><td class="fill-cell" :class="`fill-${pcn.risk.toLowerCase()}`"><RiskBadge :risk="pcn.risk" /></td><td>{{ pcn.part_count }}</td>
-              <td><NuxtLink :to="`/pcns/${pcn.id}`" class="icon-button"><Icon name="lucide:chevron-right" /></NuxtLink></td>
-            </tr></tbody>
-          </table>
-        </div>
-      </section>
     </template>
   </div>
 </template>

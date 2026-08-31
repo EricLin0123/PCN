@@ -2,6 +2,13 @@ import { all, get } from '../../utils/db'
 
 export default defineEventHandler((event) => {
   const id = Number(getRouterParam(event, 'id'))
+  const query = getQuery(event)
+  const validMonth = (value: string) => /^\d{4}-(0[1-9]|1[0-2])$/.test(value)
+  const requestedRevenueFrom = String(query.revenueFrom || '').trim()
+  const requestedRevenueTo = String(query.revenueTo || '').trim()
+  const revenueFrom = validMonth(requestedRevenueFrom) ? requestedRevenueFrom : '2025-08'
+  const revenueTo = validMonth(requestedRevenueTo) ? requestedRevenueTo : '2026-08'
+  if (revenueFrom > revenueTo) throw createError({ statusCode: 400, statusMessage: 'Revenue start month must not be after end month' })
   const pcn = get<any>(`SELECT p.id, p.pcn_number_base, p.notification_date, p.title, p.change_type_id,
       ct.name AS change_type, ct.default_risk, p.risk_override,
       ops.expected_risk,
@@ -10,7 +17,7 @@ export default defineEventHandler((event) => {
     FROM pcn p LEFT JOIN change_type ct ON ct.id = p.change_type_id
     JOIN pcn_operational_status ops ON ops.pcn_id = p.id WHERE p.id = ?`, id)
   if (!pcn) throw createError({ statusCode: 404, statusMessage: 'PCN not found' })
-  const parts = all(`SELECT tp.id, tp.display_part_number, tp.normalized_part_number,
+  const parts = all<any>(`SELECT tp.id, tp.display_part_number, tp.normalized_part_number,
       sbe.name AS sbe_name, sbe1.name AS sbe1_name, sbe2.name AS sbe2_name, sbe1.champion_email,
       EXISTS (
         SELECT 1
@@ -39,7 +46,13 @@ export default defineEventHandler((event) => {
         FROM risk_assessment ra
         JOIN risk_assessment_ti_part rp ON rp.risk_assessment_id = ra.id
         WHERE ra.pcn_id = p.id AND rp.ti_part_id = tp.id
-      ) AS has_ra
+      ) AS has_ra,
+      COALESCE((
+        SELECT sum(mmr.net_revenue)
+        FROM material_month_revenue mmr
+        WHERE mmr.normalized_part_number = tp.normalized_part_number
+          AND mmr.revenue_month BETWEEN ? AND ?
+      ), 0) AS net_revenue
     FROM pcn_ti_part pp
     JOIN pcn p ON p.id = pp.pcn_id
     JOIN ti_part tp ON tp.id = pp.ti_part_id
@@ -48,7 +61,7 @@ export default defineEventHandler((event) => {
     LEFT JOIN ti_part_organization organization ON organization.ti_part_id = tp.id
     LEFT JOIN sbe ON sbe.id = organization.sbe_id
     LEFT JOIN sbe2 ON sbe2.id = organization.sbe2_id
-    WHERE pp.pcn_id = ? ORDER BY tp.normalized_part_number`, id)
+    WHERE pp.pcn_id = ? ORDER BY tp.normalized_part_number`, revenueFrom, revenueTo, id)
   const forms = all<any>(`SELECT df.* FROM delta_form df WHERE df.pcn_id = ? ORDER BY df.apply_date DESC, df.id DESC`, id)
   for (const form of forms) {
     form.items = all(`SELECT dfi.id, dfi.sequence_number, dp.display_part_number AS delta_part,
@@ -64,5 +77,6 @@ export default defineEventHandler((event) => {
       FROM risk_assessment_ti_part rp JOIN ti_part tp ON tp.id = rp.ti_part_id
       WHERE rp.risk_assessment_id = ? ORDER BY tp.normalized_part_number`, assessment.id)
   }
-  return { pcn, parts, riskAssessments, forms }
+  const netRevenue = parts.reduce((sum: number, part: any) => sum + Number(part.net_revenue || 0), 0)
+  return { pcn, parts, riskAssessments, forms, revenueFrom, revenueTo, netRevenue }
 })

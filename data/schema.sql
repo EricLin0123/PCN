@@ -39,6 +39,21 @@ CREATE TABLE IF NOT EXISTS ti_part (
   display_part_number TEXT NOT NULL
 );
 
+-- Monthly material revenue imported from visible rows in the filtered Step 6
+-- current-backlog dashboard.
+-- Materials are intentionally not foreign-keyed to ti_part so the source can be
+-- retained in full, including materials that are not affected by a current PCN.
+CREATE TABLE IF NOT EXISTS material_month_revenue (
+  normalized_part_number TEXT NOT NULL,
+  display_part_number TEXT NOT NULL,
+  revenue_month TEXT NOT NULL CHECK (revenue_month GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]'),
+  net_revenue REAL NOT NULL,
+  source_file TEXT NOT NULL,
+  source_sheet TEXT NOT NULL,
+  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (normalized_part_number, revenue_month)
+);
+
 CREATE TABLE IF NOT EXISTS sbe1 (
   id INTEGER PRIMARY KEY,
   name TEXT NOT NULL UNIQUE,
@@ -142,6 +157,7 @@ CREATE TABLE IF NOT EXISTS risk_assessment_ti_part (
 CREATE INDEX IF NOT EXISTS idx_pcn_date ON pcn(notification_date DESC);
 CREATE INDEX IF NOT EXISTS idx_pcn_change_type ON pcn(change_type_id);
 CREATE INDEX IF NOT EXISTS idx_pcn_ti_part_part ON pcn_ti_part(ti_part_id);
+CREATE INDEX IF NOT EXISTS idx_material_month_revenue_month ON material_month_revenue(revenue_month);
 CREATE INDEX IF NOT EXISTS idx_ti_part_sbe1_sbe1 ON ti_part_sbe1(sbe1_id);
 CREATE INDEX IF NOT EXISTS idx_ti_part_organization_sbe ON ti_part_organization(sbe_id);
 CREATE INDEX IF NOT EXISTS idx_ti_part_organization_sbe1 ON ti_part_organization(sbe1_id);
@@ -361,16 +377,14 @@ SELECT
     WHEN current_delta.has_reject = 1 THEN 'REJECTED'
     WHEN ops.expected_risk = 'EOL' THEN 'EOL_EXCLUDED'
     WHEN current_delta.delta_status = 'COMPLETE'
-      AND ops.expected_risk = 'MINOR' THEN 'COMPLETED'
+      AND ops.expected_risk IN ('MINOR', 'MAJOR') THEN 'COMPLETED'
+    WHEN current_delta.has_processing = 1
+      AND ops.expected_risk = 'MINOR' THEN 'MINOR_PENDING_APPROVAL'
+    WHEN current_delta.has_processing = 1
+      AND ops.expected_risk = 'MAJOR' THEN 'MAJOR_PENDING_APPROVAL'
     WHEN ops.upload_state <> 'ALL_UPLOADED' AND ops.expected_risk = 'MINOR' THEN 'MINOR_READY_UPLOAD'
     WHEN ops.upload_state <> 'ALL_UPLOADED' AND ops.expected_risk = 'MAJOR' AND rac.ra_state <> 'FULL_RA' THEN 'MAJOR_BLOCKED_RA'
     WHEN ops.upload_state <> 'ALL_UPLOADED' AND ops.expected_risk = 'MAJOR' AND rac.ra_state = 'FULL_RA' THEN 'MAJOR_READY_UPLOAD'
-    WHEN ops.upload_state = 'ALL_UPLOADED'
-      AND current_delta.has_processing = 1
-      AND ops.expected_risk = 'MINOR' THEN 'MINOR_PENDING_APPROVAL'
-    WHEN ops.upload_state = 'ALL_UPLOADED'
-      AND current_delta.has_processing = 1
-      AND ops.expected_risk = 'MAJOR' THEN 'MAJOR_PENDING_APPROVAL'
     WHEN ops.upload_state = 'ALL_UPLOADED'
       AND current_delta.delta_status = 'COMPLETE' THEN 'COMPLETED'
     ELSE 'OTHER'

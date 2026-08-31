@@ -22,7 +22,11 @@ const filteredOrganizations = computed(() => {
 <template>
   <div class="page organization-page">
     <header class="page-header">
-      <div><p class="eyebrow">Ownership</p><h1>Organization</h1><p>SBE hierarchy, SBE-1 champions, and SBE-2 teams.</p></div>
+      <div>
+        <p class="eyebrow">Ownership</p>
+        <h1>Organization</h1>
+        <p>SBE hierarchy, SBE-1 champions, and SBE-2 teams.</p>
+      </div>
     </header>
 
     <section v-if="data" class="organization-metrics">
@@ -37,15 +41,18 @@ const filteredOrganizations = computed(() => {
         <Icon name="lucide:search" />
         <input v-model="search" type="search" placeholder="Search SBE, SBE-1, champion, or SBE-2…">
       </div>
-      <span v-if="data">{{ filteredOrganizations.length }} SBE group{{ filteredOrganizations.length === 1 ? '' : 's' }}</span>
+      <span v-if="data">{{ filteredOrganizations.length }} SBE group{{ filteredOrganizations.length === 1 ? '' : 's'
+      }}</span>
     </section>
 
-    <div v-if="error" class="alert error">Organization chart could not be loaded. <button @click="refresh()">Try again</button></div>
+    <div v-if="error" class="alert error">Organization chart could not be loaded. <button @click="refresh()">Try
+        again</button></div>
     <div v-else-if="status === 'pending' && !data" class="organization-grid">
       <div v-for="i in 3" :key="i" class="skeleton organization-skeleton" />
     </div>
     <section v-else-if="filteredOrganizations.length" class="organization-grid">
-      <article v-for="sbe in filteredOrganizations" :key="sbe.id ?? 'unmapped'" class="organization-tree panel" :class="{ 'organization-unmapped': sbe.id === null }">
+      <article v-for="sbe in filteredOrganizations" :key="sbe.id ?? 'unmapped'" class="organization-tree panel"
+        :class="{ 'organization-unmapped': sbe.id === null }">
         <header class="sbe-node">
           <span>SBE</span>
           <strong>{{ sbe.name }}</strong>
@@ -55,15 +62,18 @@ const filteredOrganizations = computed(() => {
         <div class="sbe1-branches">
           <article v-for="group in sbe.sbe1" :key="group.id" class="sbe1-branch">
             <header class="sbe1-node">
-              <div><span>SBE-1</span><strong>{{ group.name }}</strong></div>
+              <div><span>SBE-1</span><strong>{{ group.name }}</strong> <strong v-if="group.championEmail">
+                  <Icon name="lucide:mail" /> {{ group.championEmail }}
+                </strong><span v-else class="champion-missing">
+                  <Icon name="lucide:user-round-x" /> Champion not assigned
+                </span></div>
               <small>{{ group.partCount.toLocaleString() }} part{{ group.partCount === 1 ? '' : 's' }}</small>
-              <a v-if="group.championEmail" :href="`mailto:${group.championEmail}`"><Icon name="lucide:mail" /> {{ group.championEmail }}</a>
-              <span v-else class="champion-missing"><Icon name="lucide:user-round-x" /> Champion not assigned</span>
             </header>
 
             <div v-if="group.sbe2.length" class="sbe2-list">
               <div v-for="team in group.sbe2" :key="team.id" class="sbe2-node">
-                <span>SBE-2</span><strong>{{ team.name }}</strong><small>{{ team.partCount.toLocaleString() }} part{{ team.partCount === 1 ? '' : 's' }}</small>
+                <span>SBE-2</span><strong>{{ team.name }}</strong><small>{{ team.partCount.toLocaleString() }} part{{
+                  team.partCount === 1 ? '' : 's' }}</small>
               </div>
             </div>
             <div v-else class="sbe2-empty">No SBE-2 mapping</div>
@@ -71,6 +81,7 @@ const filteredOrganizations = computed(() => {
         </div>
       </article>
     </section>
-    <EmptyState v-else-if="data" title="No matching organization" text="Try another SBE, champion, or team name." icon="lucide:search-x" />
+    <EmptyState v-else-if="data" title="No matching organization" text="Try another SBE, champion, or team name."
+      icon="lucide:search-x" />
   </div>
 </template>

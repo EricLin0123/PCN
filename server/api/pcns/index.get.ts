@@ -13,6 +13,13 @@ export default defineEventHandler((event) => {
   const raState = String(query.raState || '').trim().toUpperCase()
   const changeType = String(query.changeType || '').trim()
   const executiveState = String(query.executiveState || '').trim().toUpperCase()
+  const requestedRevenueFrom = String(query.revenueFrom || '').trim()
+  const requestedRevenueTo = String(query.revenueTo || '').trim()
+  const validMonth = (value: string) => /^\d{4}-(0[1-9]|1[0-2])$/.test(value)
+  const revenueFrom = validMonth(requestedRevenueFrom) ? requestedRevenueFrom : '2025-08'
+  const revenueTo = validMonth(requestedRevenueTo) ? requestedRevenueTo : '2026-08'
+  if (revenueFrom > revenueTo) throw createError({ statusCode: 400, statusMessage: 'Revenue start month must not be after end month' })
+  const isRevenuePriorityQueue = ['MINOR_READY_UPLOAD', 'MAJOR_BLOCKED_RA'].includes(executiveState)
   const where: string[] = []
   const params: any[] = []
   if (search) {
@@ -69,6 +76,18 @@ export default defineEventHandler((event) => {
          WHERE pp2.pcn_id = p.id
          ORDER BY tp2.normalized_part_number
        ) affected) AS ti_affected_parts,
+      (SELECT group_concat(revenue_part.part_revenue, '; ')
+       FROM (
+         SELECT tp_revenue.display_part_number || ': ' || printf('%.2f', COALESCE(sum(mmr_part.net_revenue), 0)) AS part_revenue
+         FROM pcn_ti_part pp_revenue
+         JOIN ti_part tp_revenue ON tp_revenue.id = pp_revenue.ti_part_id
+         LEFT JOIN material_month_revenue mmr_part
+           ON mmr_part.normalized_part_number = tp_revenue.normalized_part_number
+          AND mmr_part.revenue_month BETWEEN ? AND ?
+         WHERE pp_revenue.pcn_id = p.id
+         GROUP BY tp_revenue.id
+         ORDER BY COALESCE(sum(mmr_part.net_revenue), 0) DESC, tp_revenue.normalized_part_number
+       ) revenue_part) AS ti_affected_parts_with_revenue,
       (SELECT group_concat(received.display_part_number, '; ')
        FROM (
          SELECT tp3.display_part_number
@@ -110,12 +129,19 @@ export default defineEventHandler((event) => {
       (SELECT group_concat(DISTINCT COALESCE(df.form_status, 'UNSPECIFIED')) FROM delta_form df WHERE df.pcn_id = p.id) AS statuses,
       pds.delta_status,
       ops.total_parts, ops.delta_relevant_parts, ops.uploaded_parts, ops.upload_state, ops.delta_risks, ops.risk_alignment,
-      rac.ra_covered_parts, rac.ra_state
+      rac.ra_covered_parts, rac.ra_state,
+      COALESCE((
+        SELECT sum(mmr.net_revenue)
+        FROM pcn_ti_part revenue_pp
+        JOIN ti_part revenue_tp ON revenue_tp.id = revenue_pp.ti_part_id
+        JOIN material_month_revenue mmr ON mmr.normalized_part_number = revenue_tp.normalized_part_number
+        WHERE revenue_pp.pcn_id = p.id AND mmr.revenue_month BETWEEN ? AND ?
+      ), 0) AS net_revenue
     FROM pcn p LEFT JOIN change_type ct ON ct.id = p.change_type_id
     JOIN pcn_operational_status ops ON ops.pcn_id = p.id
     JOIN pcn_ra_coverage rac ON rac.pcn_id = p.id
     JOIN pcn_executive_status ex ON ex.pcn_id = p.id
     JOIN pcn_delta_status pds ON pds.pcn_id = p.id ${clause}
-    ORDER BY p.notification_date DESC, p.pcn_number_base DESC LIMIT ? OFFSET ?`, ...params, pageSize, (page - 1) * pageSize)
-  return { items, total, page: showAll ? 1 : page, pageSize, pages: showAll ? 1 : Math.max(1, Math.ceil(total / pageSize)) }
+    ORDER BY ${isRevenuePriorityQueue ? 'net_revenue DESC,' : ''} p.notification_date DESC, p.pcn_number_base DESC LIMIT ? OFFSET ?`, revenueFrom, revenueTo, revenueFrom, revenueTo, ...params, pageSize, (page - 1) * pageSize)
+  return { items, total, page: showAll ? 1 : page, pageSize, pages: showAll ? 1 : Math.max(1, Math.ceil(total / pageSize)), revenueFrom, revenueTo, isRevenuePriorityQueue }
 })

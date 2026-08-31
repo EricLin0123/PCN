@@ -1,6 +1,9 @@
 <script setup lang="ts">
 const route = useRoute()
-const { data, error, refresh } = await useFetch<any>(`/api/pcns/${route.params.id}`)
+const revenueFrom = ref(String(route.query.revenueFrom || '2025-08'))
+const revenueTo = ref(String(route.query.revenueTo || '2026-08'))
+const revenueQuery = computed(() => ({ revenueFrom: revenueFrom.value, revenueTo: revenueTo.value }))
+const { data, error, refresh } = await useFetch<any>(`/api/pcns/${route.params.id}`, { query: revenueQuery, watch: [revenueQuery] })
 const { data: changeTypes } = await useFetch<any[]>('/api/change-types')
 const editing = ref(false), saving = ref(false), message = ref(''), messageType = ref('success')
 const form = reactive<any>({})
@@ -27,6 +30,7 @@ watch(data, value => {
   for (const assessment of value.riskAssessments || []) assessment.part_numbers = assessment.parts.map((part: any) => part.normalized_part_number)
 }, { immediate: true })
 function notify(text: string, type = 'success') { message.value = text; messageType.value = type; setTimeout(() => { message.value = '' }, 3500) }
+function formatRevenue(value: number) { return Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }
 async function savePcn() {
   saving.value = true
   try { await $fetch(`/api/pcns/${route.params.id}`, { method: 'PATCH', body: form }); await refresh(); editing.value = false; notify('PCN changes saved to SQLite.') }
@@ -80,8 +84,9 @@ async function deleteAssessment(assessment: any) {
           <dl class="facts"><div><dt>Notification date</dt><dd>{{ data.pcn.notification_date || 'Not set' }}</dd></div><div><dt>Change type</dt><dd>{{ data.pcn.change_type || 'Unspecified' }}</dd></div><div><dt>Expected risk</dt><dd><RiskBadge :risk="data.pcn.expected_risk" /></dd></div><div><dt>Manual override</dt><dd>{{ data.pcn.risk_override || 'None' }}</dd></div><div><dt>Upload state</dt><dd><StateBadge :state="data.pcn.upload_state" /> <small class="coverage-count">{{ data.pcn.uploaded_parts }}/{{ data.pcn.delta_relevant_parts }} Delta parts</small></dd></div><div><dt>Delta risk check</dt><dd><StateBadge :state="data.pcn.risk_alignment" /> <small v-if="data.pcn.delta_risks" class="coverage-count">Delta: {{ data.pcn.delta_risks }}</small></dd></div></dl>
           <div v-if="data.pcn.notes" class="notes"><strong>Internal notes</strong><p>{{ data.pcn.notes }}</p></div>
         </article>
-        <article class="panel parts-panel"><div class="panel-heading"><div><h2>TI affected parts</h2><p>{{ data.parts.length }} authoritative relationships</p></div><Icon name="lucide:cpu" /></div>
-          <ol v-if="data.parts.length" class="ti-part-list"><li v-for="part in data.parts" :key="part.id" :class="!part.has_delta_part ? 'ti-part-no-delta' : part.is_on_delta ? 'ti-part-on-delta' : 'ti-part-not-on-delta'"><span class="ti-part-pair"><strong>{{ part.display_part_number }}</strong><small>{{ part.delta_part_numbers || 'No Delta part number' }}</small><span class="ti-part-organization"><small>SBE: {{ part.sbe_name || '—' }}</small><small>SBE-1: {{ part.sbe1_name || '—' }}</small><small>SBE-2: {{ part.sbe2_name || '—' }}</small></span><small class="ti-part-champion">Champion: {{ part.champion_email || '—' }}</small></span></li></ol>
+        <article class="panel parts-panel"><div class="panel-heading"><div><h2>TI affected parts</h2><p>{{ data.parts.length }} authoritative relationships · Total NR {{ formatRevenue(data.netRevenue) }}</p></div><Icon name="lucide:cpu" /></div>
+          <div class="revenue-period"><strong>NR period</strong><label>From <input v-model="revenueFrom" type="month" /></label><label>To <input v-model="revenueTo" type="month" /></label></div>
+          <ol v-if="data.parts.length" class="ti-part-list"><li v-for="part in data.parts" :key="part.id" :class="!part.has_delta_part ? 'ti-part-no-delta' : part.is_on_delta ? 'ti-part-on-delta' : 'ti-part-not-on-delta'"><span class="ti-part-pair"><strong>{{ part.display_part_number }}</strong><small>{{ part.delta_part_numbers || 'No Delta part number' }}</small><span class="ti-part-organization"><small>SBE: {{ part.sbe_name || '—' }}</small><small>SBE-1: {{ part.sbe1_name || '—' }}</small><small>SBE-2: {{ part.sbe2_name || '—' }}</small></span><small class="ti-part-champion">Champion: {{ part.champion_email || '—' }}</small></span><div class="ti-part-nr"><small>NR</small><strong>{{ formatRevenue(part.net_revenue) }}</strong></div></li></ol>
           <EmptyState v-else title="No TI parts" text="No authoritative TI affected parts are recorded for this PCN." icon="lucide:cpu" />
         </article>
       </section>

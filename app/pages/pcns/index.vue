@@ -9,14 +9,18 @@ const riskAlignment = ref(String(route.query.riskAlignment || ''))
 const raState = ref(String(route.query.raState || ''))
 const changeType = ref(String(route.query.changeType || ''))
 const executiveState = ref(String(route.query.executiveState || ''))
+const revenueFrom = ref(String(route.query.revenueFrom || '2025-08'))
+const revenueTo = ref(String(route.query.revenueTo || '2026-08'))
+const isRevenuePriorityQueue = computed(() => ['MINOR_READY_UPLOAD', 'MAJOR_BLOCKED_RA'].includes(executiveState.value))
+const isMinorRevenuePriorityQueue = computed(() => executiveState.value === 'MINOR_READY_UPLOAD')
 const exporting = ref(false)
 const exportError = ref('')
-const query = computed(() => ({ search: String(route.query.search || ''), risk: String(route.query.risk || ''), status: String(route.query.status || ''), uploadState: String(route.query.uploadState || ''), riskAlignment: String(route.query.riskAlignment || ''), raState: String(route.query.raState || ''), changeType: String(route.query.changeType || ''), executiveState: String(route.query.executiveState || ''), pageSize: 'all' }))
+const query = computed(() => ({ search: String(route.query.search || ''), risk: String(route.query.risk || ''), status: String(route.query.status || ''), uploadState: String(route.query.uploadState || ''), riskAlignment: String(route.query.riskAlignment || ''), raState: String(route.query.raState || ''), changeType: String(route.query.changeType || ''), executiveState: String(route.query.executiveState || ''), revenueFrom: String(route.query.revenueFrom || '2025-08'), revenueTo: String(route.query.revenueTo || '2026-08'), pageSize: 'all' }))
 const { data, status, refresh } = await useFetch<any>('/api/pcns', { query, watch: [query] })
 const { data: changeTypes } = await useFetch<any[]>('/api/change-types')
 let timer: ReturnType<typeof setTimeout>
 function activeFilters() {
-  return { ...(search.value && { search: search.value }), ...(changeType.value && { changeType: changeType.value }), ...(risk.value && { risk: risk.value }), ...(statusFilter.value && { status: statusFilter.value }), ...(uploadState.value && { uploadState: uploadState.value }), ...(riskAlignment.value && { riskAlignment: riskAlignment.value }), ...(raState.value && { raState: raState.value }), ...(executiveState.value && { executiveState: executiveState.value }) }
+  return { ...(search.value && { search: search.value }), ...(changeType.value && { changeType: changeType.value }), ...(risk.value && { risk: risk.value }), ...(statusFilter.value && { status: statusFilter.value }), ...(uploadState.value && { uploadState: uploadState.value }), ...(riskAlignment.value && { riskAlignment: riskAlignment.value }), ...(raState.value && { raState: raState.value }), ...(executiveState.value && { executiveState: executiveState.value }), ...(isRevenuePriorityQueue.value && { revenueFrom: revenueFrom.value, revenueTo: revenueTo.value }) }
 }
 function applyFilters() {
   clearTimeout(timer)
@@ -66,6 +70,7 @@ async function exportToExcel() {
       { header: 'Delta Risk', key: 'deltaRisk', width: 18 },
       { header: 'RA Coverage', key: 'raState', width: 20 },
       { header: 'RA Covered Parts', key: 'raCoveredParts', width: 18 },
+      { header: `NR (${data.value.revenueFrom} to ${data.value.revenueTo})`, key: 'netRevenue', width: 24 },
     ]
     sheet.getRow(1).height = 24
     sheet.getRow(1).eachCell((cell) => {
@@ -77,7 +82,7 @@ async function exportToExcel() {
       const row = sheet.addRow({
         pcn: String(pcn.pcn_number_base),
         title: pcn.title,
-        tiAffectedParts: pcn.ti_affected_parts || '',
+        tiAffectedParts: isMinorRevenuePriorityQueue.value ? (pcn.ti_affected_parts_with_revenue || '') : (pcn.ti_affected_parts || ''),
         deltaReceivedParts: pcn.delta_received_parts || '',
         missedParts: pcn.missed_parts || '',
         changeType: pcn.change_type || 'Unspecified',
@@ -90,6 +95,7 @@ async function exportToExcel() {
         deltaRisk: pcn.delta_risks || '',
         raState: displayState(pcn.ra_state),
         raCoveredParts: pcn.ra_state === 'NA' ? '' : pcn.ra_covered_parts,
+        netRevenue: pcn.net_revenue,
       })
       row.getCell(1).numFmt = '@'
       row.getCell(3).numFmt = '@'
@@ -102,7 +108,7 @@ async function exportToExcel() {
       }
     }
 
-    sheet.autoFilter = { from: 'A1', to: 'O1' }
+    sheet.autoFilter = { from: 'A1', to: 'P1' }
     sheet.eachRow((row, rowNumber) => {
       if (rowNumber > 1) row.height = 21
       row.eachCell((cell) => {
@@ -133,6 +139,12 @@ async function exportToExcel() {
     <div v-if="exportError" class="alert error export-error">{{ exportError }}</div>
     <section class="panel list-panel">
       <div class="list-meta"><span v-if="data"><strong>{{ data.total.toLocaleString() }}</strong> records <template v-if="executiveState">· Executive queue: <strong>{{ executiveState.replaceAll('_', ' ') }}</strong> <NuxtLink to="/pcns" class="clear-filter">Clear</NuxtLink></template></span><span v-if="status === 'pending'" class="muted"><Icon name="lucide:loader-circle" class="spin" /> Updating</span></div>
+      <div v-if="isRevenuePriorityQueue" class="revenue-period">
+        <strong>Priority by NR</strong>
+        <label>From <input v-model="revenueFrom" type="month" @change="applyFilters()" /></label>
+        <label>To <input v-model="revenueTo" type="month" @change="applyFilters()" /></label>
+        <span>PCNs are ranked by the sum of affected-part NR in this period.</span>
+      </div>
       <div v-if="data?.items.length" class="table-wrap"><table class="records-table">
         <thead><tr>
           <th><span class="column-heading">PCN / title / part / RA</span><input v-model="search" class="column-filter" placeholder="Search PCN or part…" @input="applyFilters()" /></th>
@@ -141,15 +153,17 @@ async function exportToExcel() {
           <th><span class="column-heading">Upload state</span><select v-model="uploadState" class="column-filter" @change="applyFilters()"><option value="">(All)</option><option value="ALL_UPLOADED">All uploaded</option><option value="PARTLY_UPLOADED">Partly uploaded</option><option value="NOT_UPLOADED">Not uploaded</option></select></th>
           <th><span class="column-heading">Delta status</span><select v-model="statusFilter" class="column-filter" @change="applyFilters()"><option value="">(All)</option><option>CANCEL</option><option>PROCESSING</option><option>REJECT</option><option>COMPLETE</option><option>MIXED</option><option value="BLANK">Blank</option></select></th>
           <th><span class="column-heading">Risk alignment</span><select v-model="riskAlignment" class="column-filter" @change="applyFilters()"><option value="">(All)</option><option value="MISMATCH">Mismatch</option><option value="MATCH">Match</option><option value="NOT_ON_DELTA">Not on Delta</option><option value="NOT_APPLICABLE">Not applicable</option></select></th>
-          <th><span class="column-heading">RA coverage</span><select v-model="raState" class="column-filter" @change="applyFilters()"><option value="">(All)</option><option value="FULL_RA">Full RA</option><option value="PARTLY_MISS_RA">Partly Miss RA</option><option value="MISS_ALL_RA">Miss all RA</option><option value="NA">NA</option></select></th>
+          <th v-if="!isMinorRevenuePriorityQueue"><span class="column-heading">RA coverage</span><select v-model="raState" class="column-filter" @change="applyFilters()"><option value="">(All)</option><option value="FULL_RA">Full RA</option><option value="PARTLY_MISS_RA">Partly Miss RA</option><option value="MISS_ALL_RA">Miss all RA</option><option value="NA">NA</option></select></th>
+          <th v-if="isRevenuePriorityQueue"><span class="column-heading">NR {{ revenueFrom }}–{{ revenueTo }}</span></th>
         </tr></thead>
         <tbody><tr v-for="pcn in data.items" :key="pcn.id">
-          <td><NuxtLink :to="`/pcns/${pcn.id}`" class="record-title"><span class="mono-link">{{ pcn.pcn_number_base }}</span><small>{{ pcn.title }}</small></NuxtLink></td>
+          <td><NuxtLink :to="{ path: `/pcns/${pcn.id}`, query: isRevenuePriorityQueue ? { revenueFrom, revenueTo } : {} }" class="record-title"><span class="mono-link">{{ pcn.pcn_number_base }}</span><small>{{ pcn.title }}</small><small v-if="isMinorRevenuePriorityQueue" class="coverage-count">TI affected parts · NR: {{ pcn.ti_affected_parts_with_revenue }}</small></NuxtLink></td>
           <td>{{ pcn.change_type || 'Unspecified' }}</td><td class="fill-cell" :class="`fill-${pcn.risk.toLowerCase()}`"><RiskBadge :risk="pcn.risk" /></td>
           <td class="fill-cell" :class="`fill-${pcn.upload_state.toLowerCase().replaceAll('_', '-')}`"><StateBadge :state="pcn.upload_state" /><small class="coverage-count">{{ pcn.uploaded_parts }}/{{ pcn.delta_relevant_parts }} Delta parts</small></td>
           <td class="fill-cell delta-status-cell" :class="`fill-delta-${pcn.delta_status.toLowerCase()}`"><strong v-if="pcn.delta_status !== 'BLANK'">{{ pcn.delta_status }}</strong><small v-if="pcn.statuses && pcn.statuses !== pcn.delta_status" class="coverage-count">{{ pcn.statuses }}</small></td>
           <td class="fill-cell" :class="`fill-${pcn.risk_alignment.toLowerCase().replaceAll('_', '-')}`"><StateBadge :state="pcn.risk_alignment" kind="alignment" /><small v-if="pcn.delta_risks" class="coverage-count">Delta: {{ pcn.delta_risks }}</small></td>
-          <td class="fill-cell" :class="`fill-ra-${pcn.ra_state.toLowerCase().replaceAll('_', '-')}`"><template v-if="pcn.ra_state !== 'NA'"><StateBadge :state="pcn.ra_state" /><small class="coverage-count">{{ pcn.ra_covered_parts }}/{{ pcn.total_parts }} parts</small></template></td>
+          <td v-if="!isMinorRevenuePriorityQueue" class="fill-cell" :class="`fill-ra-${pcn.ra_state.toLowerCase().replaceAll('_', '-')}`"><template v-if="pcn.ra_state !== 'NA'"><StateBadge :state="pcn.ra_state" /><small class="coverage-count">{{ pcn.ra_covered_parts }}/{{ pcn.total_parts }} parts</small></template></td>
+          <td v-if="isRevenuePriorityQueue" class="numeric-cell"><strong>{{ pcn.net_revenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}</strong></td>
         </tr></tbody>
       </table></div>
       <EmptyState v-else-if="status !== 'pending'" title="No matching PCNs" text="Adjust the filters or create a new PCN record." icon="lucide:search-x" />

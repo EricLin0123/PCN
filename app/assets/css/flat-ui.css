@@ -165,12 +165,33 @@ textarea {
 
 .dashboard-grid .panel,
 .facts-panel,
-.parts-panel,
-.recent-panel,
-.mismatch-panel {
+.parts-panel {
   margin: 0;
   padding: 22px 28px;
   border-width: 0 1px 1px 0;
+}
+
+.revenue-period {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 0 0 16px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  background: #f7f8fb;
+  font-size: 11px;
+}
+
+.revenue-period label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.revenue-period input {
+  width: 142px;
+  padding: 6px 8px;
 }
 
 .bar-track {
@@ -447,7 +468,7 @@ textarea {
 
 .ti-part-list li {
   display: grid;
-  grid-template-columns: 42px 1fr;
+  grid-template-columns: 42px minmax(0, 1fr) 132px;
   min-height: 34px;
   border-right: 1px solid #8f9baa;
   border-bottom: 1px solid #8f9baa;
@@ -496,7 +517,7 @@ textarea {
   align-self: center;
   padding: 6px 10px;
   color: #111;
-  font-family: 'DM Mono', monospace;
+  font-family: inherit;
   font-size: 14px;
   font-weight: 600;
 }
@@ -511,6 +532,30 @@ textarea {
 .ti-part-list .ti-part-pair strong,
 .ti-part-list .ti-part-pair small {
   overflow-wrap: anywhere;
+}
+
+.ti-part-list .ti-part-nr {
+  display: grid;
+  align-content: center;
+  justify-items: end;
+  gap: 3px;
+  padding: 6px 10px;
+  border-left: 1px solid #8f9baa;
+  background: #fff;
+  color: #000;
+  font-variant-numeric: tabular-nums;
+}
+
+.ti-part-list .ti-part-nr small {
+  color: #59636f;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .08em;
+}
+
+.ti-part-list .ti-part-nr strong {
+  color: #000;
+  font-size: 13px;
 }
 
 .ti-part-list .ti-part-pair small {

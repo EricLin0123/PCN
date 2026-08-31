@@ -38,7 +38,7 @@
   align-items: start;
 }
 
-.organization-tree { overflow: hidden; border: 2px solid #000; border-radius: 0; box-shadow: none; }
+.organization-tree { border: 2px solid #000; border-radius: 0; box-shadow: none; }
 .sbe-node { padding: 17px 19px; color: #fff; background: #14213d; border-bottom: 2px solid #000; }
 .sbe-node span,.sbe-node strong,.sbe-node small { display: block; }
 .sbe-node span,.sbe1-node span,.sbe2-node span { font-size: 9px; font-weight: 900; letter-spacing: .12em; text-transform: uppercase; }
@@ -48,51 +48,32 @@
 .organization-unmapped .sbe-node { background: #3f4652; }
 
 .sbe1-branches {
-  position: relative;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
-  gap: 16px;
-  padding: 42px 16px 16px;
-  background: #edf0f4;
+  gap: 0;
+  background: #fff;
 }
 
-.sbe1-branches::before {
-  content: '';
-  position: absolute;
-  top: 20px;
-  right: 8%;
-  left: 8%;
-  border-top: 2px solid #14213d;
-}
+.sbe1-branch { padding: 0 16px 10px; border-bottom: 1px solid #c8ced7; }
+.sbe1-branch:last-child { border-bottom: 0; }
 
-.sbe1-branch { position: relative; padding-top: 12px; }
-
-.sbe1-branch::before {
-  content: '';
-  position: absolute;
-  top: -22px;
-  left: 50%;
-  height: 34px;
-  border-left: 2px solid #14213d;
-}
-
-.sbe1-node { position: relative; z-index: 1; padding: 13px; border: 1px solid #000; background: #fff; }
+.sbe1-node { padding: 13px 0 10px; }
 .sbe1-node > div { display: flex; align-items: baseline; gap: 8px; }
-.sbe1-node > div span { color: #6258df; }
+.sbe1-node > div > span:first-child { color: #6258df; }
 .sbe1-node > div strong { font-size: 16px; }
 .sbe1-node > small { display: block; margin-top: 4px; color: #657083; font-size: 10px; }
-.sbe1-node > a,.champion-missing { display: flex; align-items: center; gap: 5px; margin-top: 9px; font-size: 10px; font-weight: 700; }
-.sbe1-node > a { color: #4338ca; }
-.sbe1-node > a:hover { text-decoration: underline; }
+.champion-missing { display: flex; align-items: center; gap: 5px; margin-top: 9px; }
+.sbe1-node > div .champion-missing { margin-top: 0; margin-left: 8px; }
 .champion-missing { color: #a13d4d; }
+.sbe1-node,.sbe1-node * { color: #000; font-size: 16px; font-weight: 700; letter-spacing: normal; text-transform: none; }
 
-.sbe2-list { display: grid; gap: 7px; margin-top: 8px; padding-top: 12px; border-top: 1px solid #7b8494; }
-.sbe2-node { position: relative; display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 7px; padding: 9px 10px; border: 1px solid #aab1bc; background: #fff; }
-.sbe2-node::before { content: ''; position: absolute; top: -13px; left: 50%; height: 12px; border-left: 1px solid #7b8494; }
+.sbe2-list { display: grid; gap: 0; margin: 0 0 0 14px; padding: 0; border-left: 1px solid #aab1bc; }
+.sbe2-node { position: relative; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 7px; padding: 8px 10px 8px 20px; border-bottom: 1px solid #e0e4e9; background: #f8f9fb; }
+.sbe2-node:last-child { border-bottom: 0; }
+.sbe2-node::before { content: ''; position: absolute; top: 50%; left: 0; width: 12px; border-top: 1px solid #aab1bc; }
 .sbe2-node span { color: #657083; }
 .sbe2-node strong { min-width: 0; font-size: 11px; overflow-wrap: anywhere; }
 .sbe2-node small { color: #657083; font-size: 9px; white-space: nowrap; }
-.sbe2-empty { margin: 8px 0 0 17px; padding: 9px 11px; border: 1px dashed #9ca3af; color: #657083; background: #f8f9fb; font-size: 10px; }
+.sbe2-empty { margin: 0 0 0 14px; padding: 8px 10px 8px 20px; border-left: 1px solid #aab1bc; color: #657083; background: #f8f9fb; font-size: 10px; }
 .organization-skeleton { height: 520px; border-radius: 0; }
 
 @media(max-width:760px) {
@@ -100,9 +81,6 @@
   .organization-metrics > div:nth-child(2) { border-right: 0; }
   .organization-metrics > div:nth-child(-n+2) { border-bottom: 1px solid #000; }
   .organization-grid { grid-template-columns: 1fr; }
-  .sbe1-branches { grid-template-columns: 1fr; }
-  .sbe1-branches::before { right: auto; bottom: 16px; left: 50%; border-top: 0; border-left: 2px solid #14213d; }
-  .sbe1-branch::before { left: 50%; }
   .organization-toolbar { align-items: stretch; flex-direction: column; }
   .organization-toolbar > span { padding-left: 2px; }
 }
