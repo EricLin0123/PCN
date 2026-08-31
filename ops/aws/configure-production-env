@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+environment_file=/etc/pcn/pcn.env
+required_keys=(
+  PCN_ADMIN_USERNAME
+  PCN_ADMIN_PASSWORD
+  PCN_OPERATOR_USERNAME
+  PCN_OPERATOR_PASSWORD
+)
+
+if [ -f "$environment_file" ]; then
+  complete=true
+  for key in "${required_keys[@]}"; do
+    if ! grep -q "^${key}=" "$environment_file"; then
+      complete=false
+      break
+    fi
+  done
+  if [ "$complete" = true ]; then
+    echo 'Production environment is already complete; leaving it unchanged.'
+    exit 0
+  fi
+fi
+
+admin_password=$(openssl rand -hex 32)
+operator_password=$(openssl rand -hex 32)
+temporary_file=$(mktemp /etc/pcn/pcn.env.XXXXXX)
+trap 'rm -f "$temporary_file"' EXIT
+
+printf '%s\n' \
+  'NODE_ENV=production' \
+  'HOST=127.0.0.1' \
+  'PORT=3000' \
+  'NITRO_HOST=127.0.0.1' \
+  'NITRO_PORT=3000' \
+  'PCN_DB_PATH=/var/lib/pcn/pcn.db' \
+  'PCN_AUTH_ENABLED=true' \
+  'PCN_ADMIN_USERNAME=pcn-admin' \
+  "PCN_ADMIN_PASSWORD=$admin_password" \
+  'PCN_OPERATOR_USERNAME=pcn-operator' \
+  "PCN_OPERATOR_PASSWORD=$operator_password" \
+  > "$temporary_file"
+
+install -o root -g pcn -m 0640 "$temporary_file" "$environment_file"
+echo 'Created the root-owned production environment and generated both passwords.'

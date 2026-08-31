@@ -1,0 +1,11 @@
+[Unit]
+Description=Daily PCN Workbench database backup
+
+[Timer]
+OnCalendar=*-*-* 18:30:00 UTC
+Persistent=true
+RandomizedDelaySec=5m
+Unit=pcn-backup.service
+
+[Install]
+WantedBy=timers.target

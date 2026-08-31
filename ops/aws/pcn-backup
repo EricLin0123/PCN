@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+umask 077
+backup_dir=/var/backups/pcn
+database=/var/lib/pcn/pcn.db
+bucket=pcn-workbench-backup-387367330632-ap-northeast-1
+timestamp=$(date -u +%Y%m%dT%H%M%SZ)
+backup="$backup_dir/pcn-$timestamp.db"
+
+mkdir -p "$backup_dir"
+sqlite3 "$database" ".backup '$backup'"
+
+if [ "$(sqlite3 "$backup" 'PRAGMA integrity_check;')" != 'ok' ]; then
+  echo 'SQLite integrity check failed; preserving the backup for investigation.' >&2
+  exit 1
+fi
+
+foreign_key_errors=$(sqlite3 "$backup" 'PRAGMA foreign_key_check;')
+if [ -n "$foreign_key_errors" ]; then
+  echo 'SQLite foreign-key check failed; preserving the backup for investigation.' >&2
+  printf '%s\n' "$foreign_key_errors" >&2
+  exit 1
+fi
+
+gzip --best "$backup"
+/usr/local/bin/aws s3 cp "$backup.gz" "s3://$bucket/database/pcn-$timestamp.db.gz" \
+  --region ap-northeast-1 \
+  --only-show-errors
+rm -f "$backup.gz"
