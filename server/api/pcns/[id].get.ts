@@ -21,25 +21,24 @@ export default defineEventHandler((event) => {
       sbe.name AS sbe_name, sbe1.name AS sbe1_name, sbe2.name AS sbe2_name, sbe1.champion_email,
       EXISTS (
         SELECT 1
-        FROM delta_form_item mapped_item
-        WHERE mapped_item.ti_part_number_normalized = tp.normalized_part_number
-          AND mapped_item.delta_part_id IS NOT NULL
+        FROM delta_ti_part_mapping mapped_item
+        WHERE mapped_item.ti_part_id = tp.id
       ) AS has_delta_part,
       (SELECT group_concat(mapping.display_part_number, ', ')
        FROM (
          SELECT DISTINCT dp.display_part_number, dp.normalized_part_number
-         FROM delta_form_item mapped_item
+         FROM delta_ti_part_mapping mapped_item
          JOIN delta_part dp ON dp.id = mapped_item.delta_part_id
-         WHERE mapped_item.ti_part_number_normalized = tp.normalized_part_number
+         WHERE mapped_item.ti_part_id = tp.id
          ORDER BY dp.normalized_part_number
        ) mapping) AS delta_part_numbers,
       EXISTS (
         SELECT 1
         FROM delta_form df
         JOIN delta_form_item dfi ON dfi.delta_form_id = df.id
+        JOIN delta_ti_part_mapping mapping ON mapping.delta_part_id = dfi.delta_part_id
         WHERE df.delta_pcn_number_base = p.pcn_number_base
-          AND dfi.ti_part_number_normalized = tp.normalized_part_number
-          AND dfi.delta_part_id IS NOT NULL
+          AND mapping.ti_part_id = tp.id
       ) AS is_on_delta,
       EXISTS (
         SELECT 1

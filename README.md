@@ -99,130 +99,214 @@ erDiagram
     CHANGE_TYPE ||--o{ PCN : classifies
     PCN ||--o{ PCN_TI_PART : affects
     TI_PART ||--o{ PCN_TI_PART : appears_in
-
     PCN o|--o{ DELTA_FORM : matched_by_base
     DELTA_FORM ||--o{ DELTA_FORM_ITEM : contains
-    DELTA_PART o|--o{ DELTA_FORM_ITEM : identifies
-
+    DELTA_PART o|--o{ DELTA_FORM_ITEM : submitted_as
+    DELTA_PART ||--o| DELTA_TI_PART_MAPPING : maps
+    TI_PART ||--o{ DELTA_TI_PART_MAPPING : supplied_as
     PCN ||--o{ RISK_ASSESSMENT : has
     RISK_ASSESSMENT ||--o{ RISK_ASSESSMENT_TI_PART : covers
     TI_PART ||--o{ RISK_ASSESSMENT_TI_PART : assessed_by
+    TI_PART ||--o| TI_PART_ORGANIZATION : assigned_to
+    SBE ||--o{ TI_PART_ORGANIZATION : groups
+    SBE1 ||--o{ TI_PART_ORGANIZATION : groups
+    SBE2 ||--o{ TI_PART_ORGANIZATION : groups
+    TI_PART ||--o| TI_PART_SBE1 : owns
+    SBE1 ||--o{ TI_PART_SBE1 : owns
+    TI_PART ||--o| TI_PART_SBE1_INFERENCE : inferred_for
+    SBE1 ||--o{ TI_PART_SBE1_INFERENCE : inferred_owner
 
     CHANGE_TYPE {
         INTEGER id PK
         TEXT name UK
         TEXT default_risk
     }
-
+    RISK_TITLE_RULE {
+        INTEGER id PK
+        TEXT title_contains UK
+        TEXT expected_risk
+        INTEGER priority
+        INTEGER enabled
+    }
     PCN {
         INTEGER id PK
         TEXT pcn_number_base UK
-        TEXT notification_date
-        TEXT title
         INTEGER change_type_id FK
         TEXT risk_override
-        TEXT notes
     }
-
     TI_PART {
         INTEGER id PK
         TEXT normalized_part_number UK
         TEXT display_part_number
     }
-
     PCN_TI_PART {
         INTEGER pcn_id PK,FK
         INTEGER ti_part_id PK,FK
     }
-
     DELTA_FORM {
         INTEGER id PK
         INTEGER pcn_id FK
         TEXT delta_pcn_number_base
-        TEXT delta_pcn_number_raw
         TEXT delta_pcn_suffix
         TEXT form_no UK
-        TEXT apply_date
-        TEXT notify
         TEXT form_status
-        INTEGER total_pns
     }
-
-    DELTA_PART {
-        INTEGER id PK
-        TEXT normalized_part_number UK
-        TEXT display_part_number
-    }
-
     DELTA_FORM_ITEM {
         INTEGER id PK
         INTEGER delta_form_id FK
-        INTEGER sequence_number
         INTEGER delta_part_id FK
         TEXT ti_part_number_normalized
         TEXT raw_line
         TEXT parse_status
     }
-
+    DELTA_PART {
+        INTEGER id PK
+        TEXT normalized_part_number UK
+        TEXT display_part_number
+    }
+    DELTA_TI_PART_MAPPING {
+        INTEGER delta_part_id PK,FK
+        INTEGER ti_part_id FK
+        TEXT source_file
+        TEXT source_sheet
+        INTEGER source_row
+    }
     RISK_ASSESSMENT {
         INTEGER id PK
         TEXT ra_number UK
         INTEGER pcn_id FK
-        TEXT pcn_number_base
         TEXT workbook_filename
     }
-
     RISK_ASSESSMENT_TI_PART {
         INTEGER risk_assessment_id PK,FK
         INTEGER ti_part_id PK,FK
     }
+    TI_PART_ORGANIZATION {
+        INTEGER ti_part_id PK,FK
+        INTEGER sbe_id FK
+        INTEGER sbe1_id FK
+        INTEGER sbe2_id FK
+        TEXT source_file
+    }
+    TI_PART_SBE1 {
+        INTEGER ti_part_id PK,FK
+        INTEGER sbe1_id FK
+    }
+    TI_PART_SBE1_INFERENCE {
+        INTEGER ti_part_id PK,FK
+        INTEGER sbe1_id FK
+        TEXT matched_prefix
+        INTEGER evidence_count
+    }
+    SBE {
+        INTEGER id PK
+        TEXT name UK
+    }
+    SBE1 {
+        INTEGER id PK
+        TEXT name UK
+        TEXT champion_email
+    }
+    SBE2 {
+        INTEGER id PK
+        TEXT name UK
+    }
+    MATERIAL_MONTH_REVENUE {
+        TEXT normalized_part_number PK
+        TEXT revenue_month PK
+        REAL net_revenue
+        TEXT source_file
+        TEXT source_sheet
+    }
 ```
 
-### Calculated operational model
+`material_month_revenue` is intentionally keyed by normalized material and month
+without a foreign key, so the complete revenue source can be retained. Delta form
+items preserve submitted historical text; `delta_ti_part_mapping` holds the
+authoritative current relationship from `TexasPN_20260827.xlsx`.
+
+### Data and calculation pipeline
 
 ```mermaid
-flowchart LR
-    PCN[(pcn)]
-    CT[(change_type)]
-    PTP[(pcn_ti_part)]
-    TP[(ti_part)]
-    DF[(delta_form)]
-    DFI[(delta_form_item)]
-    RA[(risk_assessment)]
-    RAP[(risk_assessment_ti_part)]
+flowchart TB
+    subgraph Sources[Source workbooks]
+        TI["PCN From TI.xlsx"]
+        DELTA["PCN From Delta.xlsx"]
+        MAP["TexasPN_20260827.xlsx<br/>A: Delta PN · E: TI PN"]
+        REV["Step 6 revenue workbook"]
+        OWNER["Organization and SBE workbooks"]
+        RAINDEX["main.xlsx · RA index"]
+    end
 
-    UPLOAD[[pcn_upload_coverage]]
-    OPS[[pcn_operational_status]]
-    RAC[[pcn_ra_coverage]]
-    EXEC[[pcn_executive_status]]
+    subgraph Importers[Validated import and normalization]
+        BASE["import_source_data.py"]
+        MAPPER["import_delta_ti_mapping.mjs"]
+        REVENUE["import_material_revenue.mjs"]
+        ORG["organization and SBE importers"]
+        RAIMPORT["import_ra_index.py"]
+    end
 
-    PCN --> UPLOAD
-    PTP --> UPLOAD
-    TP --> UPLOAD
-    DF --> UPLOAD
-    DFI --> UPLOAD
+    subgraph SQLite[SQLite source of truth · data/pcn.db]
+        CORE[("pcn · ti_part · pcn_ti_part")]
+        FORMS[("delta_form · delta_form_item")]
+        AUTHMAP[("delta_part · delta_ti_part_mapping")]
+        RISK[("change_type · risk_title_rule")]
+        ASSESS[("risk_assessment · assessment parts")]
+        SUPPORT[("organization · ownership · revenue")]
+    end
 
-    PCN --> OPS
-    CT --> OPS
+    subgraph Views[Calculated SQL views]
+        EXPECTED[[pcn_expected_risk]]
+        UPLOAD[[pcn_upload_coverage]]
+        DELTASTATUS[[pcn_delta_status]]
+        OPS[[pcn_operational_status]]
+        RAC[[pcn_ra_coverage]]
+        EXEC[[pcn_executive_status]]
+    end
+
+    UI["Nitro API routes → Nuxt pages and Excel export"]
+
+    TI --> BASE
+    DELTA --> BASE
+    MAP --> MAPPER
+    REV --> REVENUE
+    OWNER --> ORG
+    RAINDEX --> RAIMPORT
+    BASE --> CORE
+    BASE --> FORMS
+    MAPPER --> AUTHMAP
+    MAPPER --> CORE
+    REVENUE --> SUPPORT
+    ORG --> SUPPORT
+    RAIMPORT --> ASSESS
+    CORE --> UPLOAD
+    FORMS --> UPLOAD
+    AUTHMAP --> UPLOAD
+    RISK --> EXPECTED
+    FORMS --> DELTASTATUS
+    EXPECTED --> OPS
     UPLOAD --> OPS
-    DF --> OPS
-
-    PCN --> RAC
-    CT --> RAC
-    UPLOAD --> RAC
-    RA --> RAC
-    RAP --> RAC
-
-    PCN --> EXEC
+    FORMS --> OPS
+    CORE --> RAC
+    ASSESS --> RAC
     OPS --> EXEC
     RAC --> EXEC
-    DF --> EXEC
-
-    UPLOAD --> U1["Upload coverage"]
-    OPS --> O1["Expected risk and Delta alignment"]
-    RAC --> R1["RA material coverage"]
-    EXEC --> E1["Executive action queue"]
+    DELTASTATUS --> EXEC
+    CORE --> UI
+    FORMS --> UI
+    AUTHMAP --> UI
+    SUPPORT --> UI
+    ASSESS --> UI
+    OPS --> UI
+    DELTASTATUS --> UI
+    EXEC --> UI
 ```
+
+The application runs `data/schema.sql` whenever it opens SQLite. The idempotent
+schema creates missing objects and recreates calculated views. Upload coverage
+includes only authoritative TI parts present in `delta_ti_part_mapping`; receipt
+is confirmed by a Delta form item containing the mapped Delta material. Expected
+risk precedence is manual override, enabled title rule, then change-type default.
 
 ## Back up your data
 

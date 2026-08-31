@@ -124,6 +124,21 @@ CREATE TABLE IF NOT EXISTS delta_part (
   display_part_number TEXT NOT NULL
 );
 
+-- Authoritative Delta-to-TI material mapping. Delta form items remain the
+-- historical record of what was submitted; this table also covers materials
+-- that have not appeared on a form yet.
+CREATE TABLE IF NOT EXISTS delta_ti_part_mapping (
+  delta_part_id INTEGER PRIMARY KEY REFERENCES delta_part(id) ON DELETE CASCADE,
+  ti_part_id INTEGER NOT NULL REFERENCES ti_part(id),
+  source_file TEXT NOT NULL,
+  source_sheet TEXT NOT NULL,
+  source_row INTEGER NOT NULL,
+  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_delta_ti_mapping_ti_part
+ON delta_ti_part_mapping(ti_part_id);
+
 CREATE TABLE IF NOT EXISTS delta_form_item (
   id INTEGER PRIMARY KEY,
   delta_form_id INTEGER NOT NULL REFERENCES delta_form(id) ON DELETE CASCADE,
@@ -217,17 +232,16 @@ SELECT
   count(pp.ti_part_id) AS total_parts,
   sum(CASE WHEN EXISTS (
     SELECT 1
-    FROM delta_form_item mapped_item
-    WHERE mapped_item.ti_part_number_normalized = tp.normalized_part_number
-      AND mapped_item.delta_part_id IS NOT NULL
+    FROM delta_ti_part_mapping mapped_item
+    WHERE mapped_item.ti_part_id = tp.id
   ) THEN 1 ELSE 0 END) AS delta_relevant_parts,
   sum(CASE WHEN EXISTS (
     SELECT 1
     FROM delta_form df
     JOIN delta_form_item dfi ON dfi.delta_form_id = df.id
+    JOIN delta_ti_part_mapping mapping ON mapping.delta_part_id = dfi.delta_part_id
     WHERE df.delta_pcn_number_base = p.pcn_number_base
-      AND dfi.ti_part_number_normalized = tp.normalized_part_number
-      AND dfi.delta_part_id IS NOT NULL
+      AND mapping.ti_part_id = tp.id
   ) THEN 1 ELSE 0 END) AS uploaded_parts
 FROM pcn p
 LEFT JOIN pcn_ti_part pp ON pp.pcn_id = p.id

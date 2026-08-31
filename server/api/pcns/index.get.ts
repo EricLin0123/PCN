@@ -19,7 +19,7 @@ export default defineEventHandler((event) => {
   const revenueFrom = validMonth(requestedRevenueFrom) ? requestedRevenueFrom : '2025-08'
   const revenueTo = validMonth(requestedRevenueTo) ? requestedRevenueTo : '2026-08'
   if (revenueFrom > revenueTo) throw createError({ statusCode: 400, statusMessage: 'Revenue start month must not be after end month' })
-  const isRevenuePriorityQueue = ['MINOR_READY_UPLOAD', 'MAJOR_BLOCKED_RA'].includes(executiveState)
+  const isRevenuePriorityQueue = ['MINOR_READY_UPLOAD', 'MAJOR_BLOCKED_RA', 'MAJOR_READY_UPLOAD'].includes(executiveState)
   const where: string[] = []
   const params: any[] = []
   if (search) {
@@ -98,9 +98,9 @@ export default defineEventHandler((event) => {
              SELECT 1
              FROM delta_form df3
              JOIN delta_form_item dfi3 ON dfi3.delta_form_id = df3.id
+             JOIN delta_ti_part_mapping mapping3 ON mapping3.delta_part_id = dfi3.delta_part_id
              WHERE df3.delta_pcn_number_base = p.pcn_number_base
-               AND dfi3.ti_part_number_normalized = tp3.normalized_part_number
-               AND dfi3.delta_part_id IS NOT NULL
+               AND mapping3.ti_part_id = tp3.id
            )
          ORDER BY tp3.normalized_part_number
        ) received) AS delta_received_parts,
@@ -111,16 +111,16 @@ export default defineEventHandler((event) => {
          JOIN ti_part tp4 ON tp4.id = pp4.ti_part_id
          WHERE pp4.pcn_id = p.id
            AND EXISTS (
-             SELECT 1 FROM delta_form_item mapped_item4
-             WHERE mapped_item4.ti_part_number_normalized = tp4.normalized_part_number
-               AND mapped_item4.delta_part_id IS NOT NULL
+             SELECT 1 FROM delta_ti_part_mapping mapped_item4
+             WHERE mapped_item4.ti_part_id = tp4.id
            )
            AND NOT EXISTS (
              SELECT 1
              FROM delta_form df4
              JOIN delta_form_item dfi4 ON dfi4.delta_form_id = df4.id
+             JOIN delta_ti_part_mapping mapping4 ON mapping4.delta_part_id = dfi4.delta_part_id
              WHERE df4.delta_pcn_number_base = p.pcn_number_base
-               AND dfi4.ti_part_number_normalized = tp4.normalized_part_number
+               AND mapping4.ti_part_id = tp4.id
            )
          ORDER BY tp4.normalized_part_number
        ) missed) AS missed_parts,

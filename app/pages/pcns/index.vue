@@ -11,7 +11,7 @@ const changeType = ref(String(route.query.changeType || ''))
 const executiveState = ref(String(route.query.executiveState || ''))
 const revenueFrom = ref(String(route.query.revenueFrom || '2025-08'))
 const revenueTo = ref(String(route.query.revenueTo || '2026-08'))
-const isRevenuePriorityQueue = computed(() => ['MINOR_READY_UPLOAD', 'MAJOR_BLOCKED_RA'].includes(executiveState.value))
+const isRevenuePriorityQueue = computed(() => ['MINOR_READY_UPLOAD', 'MAJOR_BLOCKED_RA', 'MAJOR_READY_UPLOAD'].includes(executiveState.value))
 const isMinorRevenuePriorityQueue = computed(() => executiveState.value === 'MINOR_READY_UPLOAD')
 const exporting = ref(false)
 const exportError = ref('')
@@ -145,7 +145,7 @@ async function exportToExcel() {
         <label>To <input v-model="revenueTo" type="month" @change="applyFilters()" /></label>
         <span>PCNs are ranked by the sum of affected-part NR in this period.</span>
       </div>
-      <div v-if="data?.items.length" class="table-wrap"><table class="records-table">
+      <div v-if="data?.items.length" class="table-wrap"><table class="records-table" :class="{ 'major-blocked-ra-table': executiveState === 'MAJOR_BLOCKED_RA' }">
         <thead><tr>
           <th><span class="column-heading">PCN / title / part / RA</span><input v-model="search" class="column-filter" placeholder="Search PCN or part…" @input="applyFilters()" /></th>
           <th><span class="column-heading">Change type</span><select v-model="changeType" class="column-filter" @change="applyFilters()"><option value="">(All)</option><option v-for="type in changeTypes" :key="type.id" :value="type.name">{{ type.name }}</option></select></th>

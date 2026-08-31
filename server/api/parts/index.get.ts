@@ -27,9 +27,9 @@ export default defineEventHandler((event) => {
         JOIN risk_assessment ra ON ra.id = rp.risk_assessment_id
         WHERE rp.ti_part_id = tp.id AND ra.ra_number LIKE ?
       ) OR EXISTS (
-        SELECT 1 FROM delta_form_item dfi
-        JOIN delta_part dp ON dp.id = dfi.delta_part_id
-        WHERE dfi.ti_part_number_normalized = tp.normalized_part_number
+        SELECT 1 FROM delta_ti_part_mapping mapping
+        JOIN delta_part dp ON dp.id = mapping.delta_part_id
+        WHERE mapping.ti_part_id = tp.id
           AND dp.normalized_part_number LIKE ?
       ))`)
     params.push(normalized, contains, contains, contains, contains, contains, contains, normalized)
@@ -87,9 +87,9 @@ export default defineEventHandler((event) => {
       ) covered) AS ra_numbers,
       (SELECT group_concat(mapped.display_part_number, ', ') FROM (
         SELECT DISTINCT dp.display_part_number, dp.normalized_part_number
-        FROM delta_form_item dfi
-        JOIN delta_part dp ON dp.id = dfi.delta_part_id
-        WHERE dfi.ti_part_number_normalized = tp.normalized_part_number
+        FROM delta_ti_part_mapping mapping
+        JOIN delta_part dp ON dp.id = mapping.delta_part_id
+        WHERE mapping.ti_part_id = tp.id
         ORDER BY dp.normalized_part_number
       ) mapped) AS delta_part_numbers
     ${joins}
