@@ -18,7 +18,9 @@ CREATE TABLE IF NOT EXISTS risk_title_rule (
 );
 
 INSERT OR IGNORE INTO risk_title_rule(title_contains, expected_risk, priority)
-VALUES ('RBAF', 'MAJOR', 100);
+VALUES
+  ('RBAF', 'MAJOR', 100),
+  ('LFAB', 'MAJOR', 100);
 
 CREATE TABLE IF NOT EXISTS pcn (
   id INTEGER PRIMARY KEY,

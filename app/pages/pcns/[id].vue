@@ -6,6 +6,8 @@ const revenueQuery = computed(() => ({ revenueFrom: revenueFrom.value, revenueTo
 const { data, error, refresh } = await useFetch<any>(`/api/pcns/${route.params.id}`, { query: revenueQuery, watch: [revenueQuery] })
 const { data: changeTypes } = await useFetch<any[]>('/api/change-types')
 const editing = ref(false), saving = ref(false), message = ref(''), messageType = ref('success')
+const emailPreview = ref<any>(null)
+const emailCopyStatus = ref('')
 const form = reactive<any>({})
 const newRa = reactive({ ra_number: '', workbook_filename: '', part_numbers: [] as string[] })
 const raRequests = computed(() => {
@@ -19,11 +21,33 @@ const raRequests = computed(() => {
   }
   return [...groups.values()]
 })
-function raMailto(request: any) {
+function raEmail(request: any) {
   const subject = `RA request for TI PCN ${data.value.pcn.pcn_number_base}`
-  const body = `Please provide the risk assessment for TI PCN ${data.value.pcn.pcn_number_base}.\n\nAffected ${request.sbe1_name || 'unassigned'} parts:\n${request.parts.join('\n')}`
-  return `mailto:${request.champion_email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
+  const teamName = request.sbe1_name || 'SBE-1'
+  const body = `Dear ${teamName} team,\n\nPlease provide the risk assessment (RA) for TI PCN ${data.value.pcn.pcn_number_base}.\n\nParts involved:\n${request.parts.map((part: string) => `- ${part}`).join('\n')}\n\nThe customer is Delta, and this request is very important. Please prioritize it accordingly.\n\nThank you.`
+  return { to: request.champion_email, subject, body }
 }
+function showEmailPreview(request: any) {
+  emailPreview.value = raEmail(request)
+  emailCopyStatus.value = ''
+}
+function closeEmailPreview() {
+  emailPreview.value = null
+  emailCopyStatus.value = ''
+}
+async function copyEmail() {
+  if (!emailPreview.value) return
+  const email = `To: ${emailPreview.value.to}\nSubject: ${emailPreview.value.subject}\n\n${emailPreview.value.body}`
+  try {
+    await navigator.clipboard.writeText(email)
+    emailCopyStatus.value = 'Email copied to clipboard.'
+  } catch {
+    emailCopyStatus.value = 'Copy was blocked. Select the email text and copy it manually.'
+  }
+}
+onMounted(() => window.addEventListener('keydown', handleEmailEscape))
+onBeforeUnmount(() => window.removeEventListener('keydown', handleEmailEscape))
+function handleEmailEscape(event: KeyboardEvent) { if (event.key === 'Escape') closeEmailPreview() }
 watch(data, value => {
   if (!value) return
   Object.assign(form, value.pcn)
@@ -103,7 +127,7 @@ async function deleteAssessment(assessment: any) {
         <div v-if="raRequests.length" class="ra-request-list">
           <article v-for="request in raRequests" :key="request.sbe1_name || 'unassigned'" class="panel ra-request">
             <div><strong>{{ request.sbe1_name || 'SBE-1 not assigned' }}</strong><p>{{ request.parts.length }} part{{ request.parts.length === 1 ? '' : 's' }} still require RA</p></div>
-            <a v-if="request.champion_email" class="button primary" :href="raMailto(request)"><Icon name="lucide:mail" /> Request RA from {{ request.champion_email }}</a>
+            <button v-if="request.champion_email" class="button primary" type="button" @click="showEmailPreview(request)"><Icon name="lucide:mail" /> Request RA from {{ request.champion_email }}</button>
             <span v-else class="ra-contact-missing">Champion email not available</span>
           </article>
         </div>
@@ -134,6 +158,16 @@ async function deleteAssessment(assessment: any) {
         </article>
         <EmptyState v-if="!data.forms.length" title="No Delta forms linked" text="This PCN currently has no matching Delta workflow form." icon="lucide:clipboard-x" />
       </section>
+
+      <div v-if="emailPreview" class="email-preview-backdrop" @click.self="closeEmailPreview">
+        <section class="email-preview" role="dialog" aria-modal="true" aria-labelledby="email-preview-title">
+          <header><div><p class="eyebrow">Outlook email boilerplate</p><h2 id="email-preview-title">Request risk assessment</h2></div><button class="icon-button" type="button" title="Close email preview" aria-label="Close email preview" @click="closeEmailPreview"><Icon name="lucide:x" /></button></header>
+          <label><span>To</span><input :value="emailPreview.to" readonly @focus="($event.target as HTMLInputElement).select()" /></label>
+          <label><span>Subject</span><input :value="emailPreview.subject" readonly @focus="($event.target as HTMLInputElement).select()" /></label>
+          <label><span>Body</span><textarea :value="emailPreview.body" readonly rows="12" @focus="($event.target as HTMLTextAreaElement).select()" /></label>
+          <footer><span class="email-copy-status" aria-live="polite">{{ emailCopyStatus }}</span><div><button class="button secondary" type="button" @click="closeEmailPreview">Close</button><button class="button primary" type="button" @click="copyEmail"><Icon name="lucide:copy" /> Copy email</button></div></footer>
+        </section>
+      </div>
     </template>
   </div>
 </template>
