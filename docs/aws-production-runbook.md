@@ -177,6 +177,34 @@ the new hostname before removing the old site address from Caddy.
 
 ## Cost budget and emergency halt
 
+### Retrieve current cost without Cost Explorer API charges
+
+The Cost Explorer API charges US$0.01 per request. To retrieve the deployed
+account-wide estimate without calling that API, read the calculated spend from
+the existing budget:
+
+```bash
+aws budgets describe-budget \
+  --account-id 387367330632 \
+  --budget-name 'PCN total AWS monthly cost 10 USD' \
+  --query 'Budget.CalculatedSpend' \
+  --output table
+```
+
+For only the current actual amount:
+
+```bash
+aws budgets describe-budget \
+  --account-id 387367330632 \
+  --budget-name 'PCN total AWS monthly cost 10 USD' \
+  --query 'Budget.CalculatedSpend.ActualSpend.Amount' \
+  --output text
+```
+
+Budget monitoring is free (and this account is within the first two free
+action-enabled budgets). The value is an AWS estimate, not real-time billing;
+AWS updates budget data up to three times daily and billing data can lag.
+
 The fixed monthly budget covers total account cost, including tax,
 subscriptions, support, recurring and upfront charges, refunds, credits, and
 discounts. Its limit is US$10. An actual-cost notification fires when cost is
