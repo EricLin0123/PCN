@@ -408,45 +408,45 @@ textarea {
   width: 12%;
 }
 
-.records-table.major-blocked-ra-table th:first-child,
-.records-table.major-blocked-ra-table td:first-child {
+.records-table.major-revenue-priority-table th:first-child,
+.records-table.major-revenue-priority-table td:first-child {
   width: 21%;
   min-width: 0;
 }
 
-.records-table.major-blocked-ra-table th:nth-child(2),
-.records-table.major-blocked-ra-table td:nth-child(2) {
+.records-table.major-revenue-priority-table th:nth-child(2),
+.records-table.major-revenue-priority-table td:nth-child(2) {
   width: 13%;
 }
 
-.records-table.major-blocked-ra-table th:nth-child(3),
-.records-table.major-blocked-ra-table td:nth-child(3) {
+.records-table.major-revenue-priority-table th:nth-child(3),
+.records-table.major-revenue-priority-table td:nth-child(3) {
   width: 8%;
 }
 
-.records-table.major-blocked-ra-table th:nth-child(4),
-.records-table.major-blocked-ra-table td:nth-child(4) {
+.records-table.major-revenue-priority-table th:nth-child(4),
+.records-table.major-revenue-priority-table td:nth-child(4) {
   width: 12%;
 }
 
-.records-table.major-blocked-ra-table th:nth-child(5),
-.records-table.major-blocked-ra-table td:nth-child(5) {
+.records-table.major-revenue-priority-table th:nth-child(5),
+.records-table.major-revenue-priority-table td:nth-child(5) {
   width: 9%;
 }
 
-.records-table.major-blocked-ra-table th:nth-child(6),
-.records-table.major-blocked-ra-table td:nth-child(6) {
+.records-table.major-revenue-priority-table th:nth-child(6),
+.records-table.major-revenue-priority-table td:nth-child(6) {
   width: 11%;
 }
 
-.records-table.major-blocked-ra-table th:nth-child(7),
-.records-table.major-blocked-ra-table td:nth-child(7),
-.records-table.major-blocked-ra-table th:nth-child(8),
-.records-table.major-blocked-ra-table td:nth-child(8) {
+.records-table.major-revenue-priority-table th:nth-child(7),
+.records-table.major-revenue-priority-table td:nth-child(7),
+.records-table.major-revenue-priority-table th:nth-child(8),
+.records-table.major-revenue-priority-table td:nth-child(8) {
   width: 13%;
 }
 
-.records-table.major-blocked-ra-table th:nth-child(8) .column-heading {
+.records-table.major-revenue-priority-table th:nth-child(8) .column-heading {
   white-space: normal;
 }
 

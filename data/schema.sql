@@ -39,8 +39,7 @@ CREATE TABLE IF NOT EXISTS ti_part (
   display_part_number TEXT NOT NULL
 );
 
--- Monthly material revenue imported from visible rows in the filtered Step 6
--- current-backlog dashboard.
+-- Monthly material revenue imported from the Step 6 current-backlog dashboard.
 -- Materials are intentionally not foreign-keyed to ti_part so the source can be
 -- retained in full, including materials that are not affected by a current PCN.
 CREATE TABLE IF NOT EXISTS material_month_revenue (

@@ -25,13 +25,8 @@ for (const [column, expectedHeader] of expectedHeaders) {
 }
 
 const values = new Map()
-let visibleRowCount = 0
 for (let rowNumber = 2; rowNumber <= sheet.rowCount; rowNumber++) {
   const row = sheet.getRow(rowNumber)
-  // The saved Excel filter defines the authoritative Current Back table.
-  // Hidden rows are intentionally excluded from Delta's visible product set.
-  if (row.hidden) continue
-  visibleRowCount++
   const displayPart = String(row.getCell(6).value ?? '').trim()
   const normalizedPart = normalizePart(displayPart)
   const month = String(row.getCell(13).value ?? '').trim()
@@ -81,4 +76,4 @@ try {
   database.exec('ROLLBACK')
   throw error
 }
-console.log(`Imported ${values.size} material-month revenue totals from ${visibleRowCount} visible worksheet rows.`)
+console.log(`Imported ${values.size} material-month revenue totals from ${sheet.rowCount - 1} worksheet rows.`)

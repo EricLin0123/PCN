@@ -145,7 +145,7 @@ async function exportToExcel() {
         <label>To <input v-model="revenueTo" type="month" @change="applyFilters()" /></label>
         <span>PCNs are ranked by the sum of affected-part NR in this period.</span>
       </div>
-      <div v-if="data?.items.length" class="table-wrap"><table class="records-table" :class="{ 'major-blocked-ra-table': executiveState === 'MAJOR_BLOCKED_RA' }">
+      <div v-if="data?.items.length" class="table-wrap"><table class="records-table" :class="{ 'major-revenue-priority-table': ['MAJOR_BLOCKED_RA', 'MAJOR_READY_UPLOAD'].includes(executiveState) }">
         <thead><tr>
           <th><span class="column-heading">PCN / title / part / RA</span><input v-model="search" class="column-filter" placeholder="Search PCN or part…" @input="applyFilters()" /></th>
           <th><span class="column-heading">Change type</span><select v-model="changeType" class="column-filter" @change="applyFilters()"><option value="">(All)</option><option v-for="type in changeTypes" :key="type.id" :value="type.name">{{ type.name }}</option></select></th>
