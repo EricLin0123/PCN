@@ -35,6 +35,44 @@ CREATE TABLE IF NOT EXISTS pcn (
   updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Application identities and sessions are intentionally local to this SQLite
+-- database. Passwords and session tokens are stored only as one-way hashes.
+CREATE TABLE IF NOT EXISTS app_user (
+  id INTEGER PRIMARY KEY,
+  username TEXT NOT NULL COLLATE NOCASE UNIQUE,
+  password_hash TEXT NOT NULL,
+  password_salt TEXT NOT NULL,
+  role TEXT NOT NULL CHECK (role IN ('operator', 'admin')),
+  enabled INTEGER NOT NULL DEFAULT 1 CHECK (enabled IN (0, 1)),
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS auth_session (
+  id INTEGER PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES app_user(id) ON DELETE CASCADE,
+  token_hash TEXT NOT NULL UNIQUE,
+  expires_at TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_auth_session_expires ON auth_session(expires_at);
+
+-- A CSC upload is a human claim and remains separate from imported Delta-form
+-- coverage. Admin confirmation records that TI has independently verified it.
+CREATE TABLE IF NOT EXISTS pcn_csc_upload (
+  pcn_id INTEGER PRIMARY KEY REFERENCES pcn(id) ON DELETE CASCADE,
+  apply_date TEXT NOT NULL CHECK (apply_date GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9]'),
+  form_no TEXT NOT NULL UNIQUE,
+  pcn_no TEXT NOT NULL UNIQUE,
+  uploaded_by_user_id INTEGER REFERENCES app_user(id),
+  uploaded_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  confirmed_by_user_id INTEGER REFERENCES app_user(id),
+  confirmed_at TEXT,
+  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CHECK (confirmed_at IS NOT NULL OR confirmed_by_user_id IS NULL)
+);
+
 CREATE TABLE IF NOT EXISTS ti_part (
   id INTEGER PRIMARY KEY,
   normalized_part_number TEXT NOT NULL UNIQUE,

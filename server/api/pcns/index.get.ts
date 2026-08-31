@@ -9,6 +9,7 @@ export default defineEventHandler((event) => {
   const risk = String(query.risk || '').trim().toUpperCase()
   const status = String(query.status || '').trim().toUpperCase()
   const uploadState = String(query.uploadState || '').trim().toUpperCase()
+  const cscStatus = String(query.cscStatus || '').trim().toUpperCase()
   const riskAlignment = String(query.riskAlignment || '').trim().toUpperCase()
   const raState = String(query.raState || '').trim().toUpperCase()
   const changeType = String(query.changeType || '').trim()
@@ -31,9 +32,11 @@ export default defineEventHandler((event) => {
       LEFT JOIN delta_part dps ON dps.id = dfis.delta_part_id
       WHERE dfs.pcn_id = p.id
         AND (dfis.ti_part_number_normalized LIKE ? OR dps.normalized_part_number LIKE ?)) OR EXISTS (
-      SELECT 1 FROM risk_assessment ra WHERE ra.pcn_id = p.id AND ra.ra_number LIKE ?))`)
+      SELECT 1 FROM risk_assessment ra WHERE ra.pcn_id = p.id AND ra.ra_number LIKE ?) OR EXISTS (
+      SELECT 1 FROM pcn_csc_upload cu_search WHERE cu_search.pcn_id = p.id
+        AND (cu_search.form_no LIKE ? OR cu_search.pcn_no LIKE ?)))`)
     const partSearch = `%${search.toUpperCase()}%`
-    params.push(`%${search}%`, `%${search}%`, partSearch, partSearch, partSearch, `%${search}%`)
+    params.push(`%${search}%`, `%${search}%`, partSearch, partSearch, partSearch, `%${search}%`, `%${search}%`, `%${search}%`)
   }
   if (risk) {
     where.push('ops.expected_risk = ?')
@@ -51,6 +54,9 @@ export default defineEventHandler((event) => {
     where.push('ops.upload_state = ?')
     params.push(uploadState)
   }
+  if (cscStatus === 'CONFIRMED') where.push('cu.confirmed_at IS NOT NULL')
+  if (cscStatus === 'CSC_UPLOADED') where.push('cu.pcn_id IS NOT NULL AND cu.confirmed_at IS NULL')
+  if (cscStatus === 'NOT_CSC_UPLOADED') where.push('cu.pcn_id IS NULL')
   if (riskAlignment) {
     where.push('ops.risk_alignment = ?')
     params.push(riskAlignment)
@@ -64,7 +70,7 @@ export default defineEventHandler((event) => {
     params.push(executiveState)
   }
   const clause = where.length ? `WHERE ${where.join(' AND ')}` : ''
-  const total = get<{ count: number }>(`SELECT count(*) AS count FROM pcn p LEFT JOIN change_type ct ON ct.id = p.change_type_id JOIN pcn_operational_status ops ON ops.pcn_id = p.id JOIN pcn_ra_coverage rac ON rac.pcn_id = p.id JOIN pcn_executive_status ex ON ex.pcn_id = p.id JOIN pcn_delta_status pds ON pds.pcn_id = p.id ${clause}`, ...params)?.count || 0
+  const total = get<{ count: number }>(`SELECT count(*) AS count FROM pcn p LEFT JOIN change_type ct ON ct.id = p.change_type_id JOIN pcn_operational_status ops ON ops.pcn_id = p.id JOIN pcn_ra_coverage rac ON rac.pcn_id = p.id JOIN pcn_executive_status ex ON ex.pcn_id = p.id JOIN pcn_delta_status pds ON pds.pcn_id = p.id LEFT JOIN pcn_csc_upload cu ON cu.pcn_id = p.id ${clause}`, ...params)?.count || 0
   const items = all(`SELECT p.id, p.pcn_number_base, p.notification_date, p.title,
       ct.name AS change_type, ops.expected_risk AS risk,
       (SELECT count(*) FROM pcn_ti_part pp WHERE pp.pcn_id = p.id) AS part_count,
@@ -128,6 +134,8 @@ export default defineEventHandler((event) => {
       (SELECT count(*) FROM risk_assessment ra WHERE ra.pcn_id = p.id) AS ra_count,
       (SELECT group_concat(DISTINCT COALESCE(df.form_status, 'UNSPECIFIED')) FROM delta_form df WHERE df.pcn_id = p.id) AS statuses,
       pds.delta_status,
+      CASE WHEN cu.confirmed_at IS NOT NULL THEN 'CONFIRMED' WHEN cu.pcn_id IS NOT NULL THEN 'CSC_UPLOADED' ELSE 'NOT_CSC_UPLOADED' END AS csc_status,
+      cu.apply_date AS csc_apply_date, cu.form_no AS csc_form_no, cu.pcn_no AS csc_pcn_no,
       ops.total_parts, ops.delta_relevant_parts, ops.uploaded_parts, ops.upload_state, ops.delta_risks, ops.risk_alignment,
       rac.ra_covered_parts, rac.ra_state,
       COALESCE((
@@ -141,7 +149,8 @@ export default defineEventHandler((event) => {
     JOIN pcn_operational_status ops ON ops.pcn_id = p.id
     JOIN pcn_ra_coverage rac ON rac.pcn_id = p.id
     JOIN pcn_executive_status ex ON ex.pcn_id = p.id
-    JOIN pcn_delta_status pds ON pds.pcn_id = p.id ${clause}
+    JOIN pcn_delta_status pds ON pds.pcn_id = p.id
+    LEFT JOIN pcn_csc_upload cu ON cu.pcn_id = p.id ${clause}
     ORDER BY ${isRevenuePriorityQueue ? 'net_revenue DESC,' : ''} p.notification_date DESC, p.pcn_number_base DESC LIMIT ? OFFSET ?`, revenueFrom, revenueTo, revenueFrom, revenueTo, ...params, pageSize, (page - 1) * pageSize)
   return { items, total, page: showAll ? 1 : page, pageSize, pages: showAll ? 1 : Math.max(1, Math.ceil(total / pageSize)), revenueFrom, revenueTo, isRevenuePriorityQueue }
 })

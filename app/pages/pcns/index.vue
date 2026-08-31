@@ -5,6 +5,7 @@ const search = ref(String(route.query.search || ''))
 const risk = ref(String(route.query.risk || ''))
 const statusFilter = ref(String(route.query.status || ''))
 const uploadState = ref(String(route.query.uploadState || ''))
+const cscStatus = ref(String(route.query.cscStatus || ''))
 const riskAlignment = ref(String(route.query.riskAlignment || ''))
 const raState = ref(String(route.query.raState || ''))
 const changeType = ref(String(route.query.changeType || ''))
@@ -16,7 +17,7 @@ const isMinorRevenuePriorityQueue = computed(() => executiveState.value === 'MIN
 const revenueChartTitle = computed(() => executiveState.value === 'MINOR_READY_UPLOAD' ? 'Minor ready for upload' : 'Major blocked by RA')
 const exporting = ref(false)
 const exportError = ref('')
-const query = computed(() => ({ search: String(route.query.search || ''), risk: String(route.query.risk || ''), status: String(route.query.status || ''), uploadState: String(route.query.uploadState || ''), riskAlignment: String(route.query.riskAlignment || ''), raState: String(route.query.raState || ''), changeType: String(route.query.changeType || ''), executiveState: String(route.query.executiveState || ''), revenueFrom: String(route.query.revenueFrom || '2025-08'), revenueTo: String(route.query.revenueTo || '2026-08'), pageSize: 'all' }))
+const query = computed(() => ({ search: String(route.query.search || ''), risk: String(route.query.risk || ''), status: String(route.query.status || ''), uploadState: String(route.query.uploadState || ''), cscStatus: String(route.query.cscStatus || ''), riskAlignment: String(route.query.riskAlignment || ''), raState: String(route.query.raState || ''), changeType: String(route.query.changeType || ''), executiveState: String(route.query.executiveState || ''), revenueFrom: String(route.query.revenueFrom || '2025-08'), revenueTo: String(route.query.revenueTo || '2026-08'), pageSize: 'all' }))
 const { data, status, refresh } = await useFetch<any>('/api/pcns', { query, watch: [query] })
 const { data: changeTypes } = await useFetch<any[]>('/api/change-types')
 const revenueChartItems = computed(() => (data.value?.items || [])
@@ -24,7 +25,7 @@ const revenueChartItems = computed(() => (data.value?.items || [])
   .map((pcn: any) => ({ pcnNumber: String(pcn.pcn_number_base), netRevenue: Number(pcn.net_revenue) })))
 let timer: ReturnType<typeof setTimeout>
 function activeFilters() {
-  return { ...(search.value && { search: search.value }), ...(changeType.value && { changeType: changeType.value }), ...(risk.value && { risk: risk.value }), ...(statusFilter.value && { status: statusFilter.value }), ...(uploadState.value && { uploadState: uploadState.value }), ...(riskAlignment.value && { riskAlignment: riskAlignment.value }), ...(raState.value && { raState: raState.value }), ...(executiveState.value && { executiveState: executiveState.value }), ...(isRevenuePriorityQueue.value && { revenueFrom: revenueFrom.value, revenueTo: revenueTo.value }) }
+  return { ...(search.value && { search: search.value }), ...(changeType.value && { changeType: changeType.value }), ...(risk.value && { risk: risk.value }), ...(statusFilter.value && { status: statusFilter.value }), ...(uploadState.value && { uploadState: uploadState.value }), ...(cscStatus.value && { cscStatus: cscStatus.value }), ...(riskAlignment.value && { riskAlignment: riskAlignment.value }), ...(raState.value && { raState: raState.value }), ...(executiveState.value && { executiveState: executiveState.value }), ...(isRevenuePriorityQueue.value && { revenueFrom: revenueFrom.value, revenueTo: revenueTo.value }) }
 }
 function applyFilters() {
   clearTimeout(timer)
@@ -67,6 +68,7 @@ async function exportToExcel() {
       { header: 'Change Type', key: 'changeType', width: 32 },
       { header: 'Expected Risk', key: 'risk', width: 17 },
       { header: 'Upload State', key: 'uploadState', width: 22 },
+      { header: 'CSC Verification', key: 'cscStatus', width: 22 },
       { header: 'Uploaded Parts', key: 'uploadedParts', width: 16 },
       { header: 'Delta-Relevant Parts', key: 'totalParts', width: 20 },
       { header: 'Delta Status', key: 'deltaStatus', width: 18 },
@@ -92,6 +94,7 @@ async function exportToExcel() {
         changeType: pcn.change_type || 'Unspecified',
         risk: displayState(pcn.risk),
         uploadState: displayState(pcn.upload_state),
+        cscStatus: displayState(pcn.csc_status),
         uploadedParts: pcn.uploaded_parts,
         totalParts: pcn.delta_relevant_parts,
         deltaStatus: displayState(pcn.delta_status),
@@ -105,14 +108,14 @@ async function exportToExcel() {
       row.getCell(3).numFmt = '@'
       row.getCell(4).numFmt = '@'
       row.getCell(5).numFmt = '@'
-      for (const [column, state] of [[7, pcn.risk], [8, pcn.upload_state], [11, pcn.delta_status], [12, pcn.risk_alignment], [14, pcn.ra_state]] as const) {
+      for (const [column, state] of [[7, pcn.risk], [8, pcn.upload_state], [12, pcn.delta_status], [13, pcn.risk_alignment], [15, pcn.ra_state]] as const) {
         const cell = row.getCell(column)
         cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: exportFill[state] || 'FFFFFFFF' } }
         cell.font = { bold: true, color: { argb: ['MAJOR', 'REJECT', 'CANCEL', 'MISMATCH', 'MISS_ALL_RA', 'NA'].includes(state) ? 'FFFFFFFF' : 'FF000000' } }
       }
     }
 
-    sheet.autoFilter = { from: 'A1', to: 'P1' }
+    sheet.autoFilter = { from: 'A1', to: 'Q1' }
     sheet.eachRow((row, rowNumber) => {
       if (rowNumber > 1) row.height = 21
       row.eachCell((cell) => {
@@ -158,6 +161,7 @@ async function exportToExcel() {
           <th><span class="column-heading">Change type</span><select v-model="changeType" class="column-filter" @change="applyFilters()"><option value="">(All)</option><option v-for="type in changeTypes" :key="type.id" :value="type.name">{{ type.name }}</option></select></th>
           <th><span class="column-heading">Expected risk</span><select v-model="risk" class="column-filter" @change="applyFilters()"><option value="">(All)</option><option>MAJOR</option><option>MINOR</option><option>EOL</option><option>UNKNOWN</option></select></th>
           <th><span class="column-heading">Upload state</span><select v-model="uploadState" class="column-filter" @change="applyFilters()"><option value="">(All)</option><option value="ALL_UPLOADED">All uploaded</option><option value="PARTLY_UPLOADED">Partly uploaded</option><option value="NOT_UPLOADED">Not uploaded</option></select></th>
+          <th><span class="column-heading">CSC verification</span><select v-model="cscStatus" class="column-filter" @change="applyFilters()"><option value="">(All)</option><option value="NOT_CSC_UPLOADED">Not CSC uploaded</option><option value="CSC_UPLOADED">CSC uploaded</option><option value="CONFIRMED">Confirmed uploaded</option></select></th>
           <th><span class="column-heading">Delta status</span><select v-model="statusFilter" class="column-filter" @change="applyFilters()"><option value="">(All)</option><option>CANCEL</option><option>PROCESSING</option><option>REJECT</option><option>COMPLETE</option><option>MIXED</option><option value="BLANK">Blank</option></select></th>
           <th><span class="column-heading">Risk alignment</span><select v-model="riskAlignment" class="column-filter" @change="applyFilters()"><option value="">(All)</option><option value="MISMATCH">Mismatch</option><option value="MATCH">Match</option><option value="NOT_ON_DELTA">Not on Delta</option><option value="NOT_APPLICABLE">Not applicable</option></select></th>
           <th v-if="!isMinorRevenuePriorityQueue"><span class="column-heading">RA coverage</span><select v-model="raState" class="column-filter" @change="applyFilters()"><option value="">(All)</option><option value="FULL_RA">Full RA</option><option value="PARTLY_MISS_RA">Partly Miss RA</option><option value="MISS_ALL_RA">Miss all RA</option><option value="NA">NA</option></select></th>
@@ -167,6 +171,7 @@ async function exportToExcel() {
           <td><NuxtLink :to="{ path: `/pcns/${pcn.id}`, query: isRevenuePriorityQueue ? { revenueFrom, revenueTo } : {} }" class="record-title"><span class="mono-link">{{ pcn.pcn_number_base }}</span><small>{{ pcn.title }}</small><small v-if="isMinorRevenuePriorityQueue" class="coverage-count">TI affected parts · NR: {{ pcn.ti_affected_parts_with_revenue }}</small></NuxtLink></td>
           <td>{{ pcn.change_type || 'Unspecified' }}</td><td class="fill-cell" :class="`fill-${pcn.risk.toLowerCase()}`"><RiskBadge :risk="pcn.risk" /></td>
           <td class="fill-cell" :class="`fill-${pcn.upload_state.toLowerCase().replaceAll('_', '-')}`"><StateBadge :state="pcn.upload_state" /><small class="coverage-count">{{ pcn.uploaded_parts }}/{{ pcn.delta_relevant_parts }} Delta parts</small></td>
+          <td class="fill-cell" :class="`fill-${pcn.csc_status.toLowerCase().replaceAll('_', '-')}`"><StateBadge :state="pcn.csc_status" /><small v-if="pcn.csc_form_no" class="coverage-count">{{ pcn.csc_form_no }}</small></td>
           <td class="fill-cell delta-status-cell" :class="`fill-delta-${pcn.delta_status.toLowerCase()}`"><strong v-if="pcn.delta_status !== 'BLANK'">{{ pcn.delta_status }}</strong><small v-if="pcn.statuses && pcn.statuses !== pcn.delta_status" class="coverage-count">{{ pcn.statuses }}</small></td>
           <td class="fill-cell" :class="`fill-${pcn.risk_alignment.toLowerCase().replaceAll('_', '-')}`"><StateBadge :state="pcn.risk_alignment" kind="alignment" /><small v-if="pcn.delta_risks" class="coverage-count">Delta: {{ pcn.delta_risks }}</small></td>
           <td v-if="!isMinorRevenuePriorityQueue" class="fill-cell" :class="`fill-ra-${pcn.ra_state.toLowerCase().replaceAll('_', '-')}`"><template v-if="pcn.ra_state !== 'NA'"><StateBadge :state="pcn.ra_state" /><small class="coverage-count">{{ pcn.ra_covered_parts }}/{{ pcn.total_parts }} parts</small></template></td>

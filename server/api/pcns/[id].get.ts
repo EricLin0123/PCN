@@ -77,5 +77,12 @@ export default defineEventHandler((event) => {
       WHERE rp.risk_assessment_id = ? ORDER BY tp.normalized_part_number`, assessment.id)
   }
   const netRevenue = parts.reduce((sum: number, part: any) => sum + Number(part.net_revenue || 0), 0)
-  return { pcn, parts, riskAssessments, forms, revenueFrom, revenueTo, netRevenue }
+  const cscUpload = get<any>(`SELECT cu.pcn_id, cu.apply_date, cu.form_no, cu.pcn_no,
+      cu.uploaded_at, cu.confirmed_at, uploader.username AS uploaded_by,
+      confirmer.username AS confirmed_by
+    FROM pcn_csc_upload cu
+    LEFT JOIN app_user uploader ON uploader.id = cu.uploaded_by_user_id
+    LEFT JOIN app_user confirmer ON confirmer.id = cu.confirmed_by_user_id
+    WHERE cu.pcn_id = ?`, id)
+  return { pcn, parts, riskAssessments, forms, cscUpload: cscUpload || null, revenueFrom, revenueTo, netRevenue }
 })

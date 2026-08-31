@@ -9,6 +9,7 @@ const links = [
   { to: '/pcns/new', label: 'New PCN', icon: 'lucide:circle-plus' },
 ]
 const isActive = (to: string) => to === '/' ? route.path === '/' : route.path === to || (to === '/pcns' && /^\/pcns\/\d/.test(route.path))
+const { user, authEnabled, logout } = useAuth()
 </script>
 
 <template>
@@ -26,6 +27,10 @@ const isActive = (to: string) => to === '/' ? route.path === '/' : route.path ==
       <div class="source-note">
         <span class="status-dot" />
         <div><strong>SQLite connected</strong><small>Database is the source of truth</small></div>
+      </div>
+      <div v-if="authEnabled && user" class="session-card">
+        <div><strong>{{ user.username }}</strong><small>{{ user.role }}</small></div>
+        <button title="Sign out" aria-label="Sign out" @click="logout"><Icon name="lucide:log-out" /></button>
       </div>
       <div class="owner-tag">
         <strong>Eric Lin</strong>

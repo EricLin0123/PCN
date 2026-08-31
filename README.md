@@ -46,8 +46,27 @@ Run this once after cloning:
 npm install
 ```
 
-No `.env` file or spreadsheet setup is required. The application uses
-`data/pcn.db` automatically.
+The application uses `data/pcn.db` automatically. Login is disabled by default
+for `npm run dev`, so local development remains frictionless.
+
+### Enable operator/admin login
+
+Authentication is enabled by default in a production build. To exercise it in
+development, set these environment variables before starting the app:
+
+```powershell
+$env:PCN_AUTH_ENABLED="true"
+$env:PCN_ADMIN_USERNAME="admin"
+$env:PCN_ADMIN_PASSWORD="replace-with-a-long-password"
+$env:PCN_OPERATOR_USERNAME="csc"
+$env:PCN_OPERATOR_PASSWORD="replace-with-another-long-password"
+npm run dev
+```
+
+The two accounts are created only if their usernames do not already exist;
+restarting does not overwrite an existing password. Passwords are stored as
+scrypt hashes. Operators can use every workflow except confirming a CSC upload,
+which is restricted to admins. Sessions expire after 12 hours.
 
 ### Start the application
 
