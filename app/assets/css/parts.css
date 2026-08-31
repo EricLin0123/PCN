@@ -107,18 +107,19 @@
 }
 
 .parts-table td {
-  vertical-align: top;
+  vertical-align: middle;
+  white-space: nowrap;
 }
 
 .part-number,
 .part-secondary {
-  display: block;
+  display: inline;
 }
 
 .organization-path {
-  display: grid;
-  grid-template-columns: 38px 1fr;
-  gap: 3px 7px;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 7px;
 }
 
 .organization-path small {
@@ -132,7 +133,7 @@
 }
 
 .part-secondary {
-  margin-top: 5px;
+  margin-left: 8px;
   color: var(--muted);
   font-size: 9px;
 }
@@ -168,7 +169,7 @@
 
 .related-links {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 4px 10px;
 }
 

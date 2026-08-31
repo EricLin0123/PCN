@@ -33,8 +33,9 @@ const { user, authEnabled, logout } = useAuth()
         <button title="Sign out" aria-label="Sign out" @click="logout"><Icon name="lucide:log-out" /></button>
       </div>
       <div class="owner-tag">
-        <strong>Eric Lin</strong>
+        <strong>Built with love by TI Sales Eric Lin</strong>
         <a href="mailto:e-lin1@ti.com">e-lin1@ti.com</a>
+        <p>Data are provided by colleagues at TI and partners at Delta. This tool supports internal PCN management; Eric Lin accepts no personal responsibility or liability for PCN-related decisions or outcomes.</p>
       </div>
     </aside>
     <main class="main"><slot /></main>

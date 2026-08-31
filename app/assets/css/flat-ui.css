@@ -87,6 +87,13 @@ body {
   text-decoration: underline;
 }
 
+.owner-tag p {
+  margin: 9px 0 0;
+  color: #93a4b7;
+  font-size: 9px;
+  line-height: 1.45;
+}
+
 .page {
   max-width: none;
   padding: 0 0 40px;
