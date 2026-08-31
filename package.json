@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@nuxt/icon": "^2.0.0",
+    "chart.js": "^4.5.1",
     "exceljs": "^4.4.0",
     "nuxt": "^4.0.0"
   },
