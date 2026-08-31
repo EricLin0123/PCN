@@ -14,6 +14,10 @@ erDiagram
     SBE1 ||--o{ TI_PART_SBE1 : owns
     TI_PART ||--o| TI_PART_SBE1_INFERENCE : records
     SBE1 ||--o{ TI_PART_SBE1_INFERENCE : inferred_as
+    TI_PART ||--o| TI_PART_ORGANIZATION : classified_as
+    SBE ||--o{ TI_PART_ORGANIZATION : contains
+    SBE1 ||--o{ TI_PART_ORGANIZATION : contains
+    SBE2 ||--o{ TI_PART_ORGANIZATION : contains
 
     PCN o|--o{ DELTA_FORM : matched_by_base
     DELTA_FORM ||--o{ DELTA_FORM_ITEM : contains
@@ -53,6 +57,16 @@ erDiagram
         TEXT champion_email "nullable when source is blank"
     }
 
+    SBE {
+        INTEGER id PK
+        TEXT name UK
+    }
+
+    SBE2 {
+        INTEGER id PK
+        TEXT name UK
+    }
+
     TI_PART_SBE1 {
         INTEGER ti_part_id PK,FK
         INTEGER sbe1_id FK
@@ -65,6 +79,17 @@ erDiagram
         TEXT matched_prefix
         INTEGER evidence_count
         TEXT inferred_at
+    }
+
+    TI_PART_ORGANIZATION {
+        INTEGER ti_part_id PK,FK
+        INTEGER sbe_id FK
+        INTEGER sbe1_id FK
+        INTEGER sbe2_id FK
+        TEXT source_file
+        TEXT source_sheet
+        INTEGER source_row
+        TEXT updated_at
     }
 
     PCN_TI_PART {

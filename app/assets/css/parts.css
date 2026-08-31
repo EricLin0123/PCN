@@ -54,6 +54,22 @@
   display: block;
 }
 
+.organization-path {
+  display: grid;
+  grid-template-columns: 38px 1fr;
+  gap: 3px 7px;
+}
+
+.organization-path small {
+  color: var(--muted);
+  font-size: 8px;
+  font-weight: 800;
+}
+
+.organization-path strong {
+  font-size: 10px;
+}
+
 .part-secondary {
   margin-top: 5px;
   color: var(--muted);

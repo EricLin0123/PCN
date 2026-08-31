@@ -81,7 +81,7 @@ async function deleteAssessment(assessment: any) {
           <div v-if="data.pcn.notes" class="notes"><strong>Internal notes</strong><p>{{ data.pcn.notes }}</p></div>
         </article>
         <article class="panel parts-panel"><div class="panel-heading"><div><h2>TI affected parts</h2><p>{{ data.parts.length }} authoritative relationships</p></div><Icon name="lucide:cpu" /></div>
-          <ol v-if="data.parts.length" class="ti-part-list"><li v-for="part in data.parts" :key="part.id" :class="!part.has_delta_part ? 'ti-part-no-delta' : part.is_on_delta ? 'ti-part-on-delta' : 'ti-part-not-on-delta'"><span class="ti-part-pair"><strong>{{ part.display_part_number }}</strong><small>{{ part.delta_part_numbers || 'No Delta part number' }}</small><small>SBE-1: {{ part.sbe1_name || '—' }} · Champion: {{ part.champion_email || '—' }}</small></span></li></ol>
+          <ol v-if="data.parts.length" class="ti-part-list"><li v-for="part in data.parts" :key="part.id" :class="!part.has_delta_part ? 'ti-part-no-delta' : part.is_on_delta ? 'ti-part-on-delta' : 'ti-part-not-on-delta'"><span class="ti-part-pair"><strong>{{ part.display_part_number }}</strong><small>{{ part.delta_part_numbers || 'No Delta part number' }}</small><span class="ti-part-organization"><small>SBE: {{ part.sbe_name || '—' }}</small><small>SBE-1: {{ part.sbe1_name || '—' }}</small><small>SBE-2: {{ part.sbe2_name || '—' }}</small></span><small class="ti-part-champion">Champion: {{ part.champion_email || '—' }}</small></span></li></ol>
           <EmptyState v-else title="No TI parts" text="No authoritative TI affected parts are recorded for this PCN." icon="lucide:cpu" />
         </article>
       </section>

@@ -17,7 +17,7 @@ export default defineEventHandler((event) => {
   if (search) {
     const contains = `%${search}%`
     const normalized = `%${search.toUpperCase()}%`
-    where.push(`(tp.normalized_part_number LIKE ? OR sbe1.name LIKE ? OR sbe1.champion_email LIKE ?
+    where.push(`(tp.normalized_part_number LIKE ? OR sbe.name LIKE ? OR sbe1.name LIKE ? OR sbe2.name LIKE ? OR sbe1.champion_email LIKE ?
       OR EXISTS (
         SELECT 1 FROM pcn_ti_part pp
         JOIN pcn ON pcn.id = pp.pcn_id
@@ -32,7 +32,7 @@ export default defineEventHandler((event) => {
         WHERE dfi.ti_part_number_normalized = tp.normalized_part_number
           AND dp.normalized_part_number LIKE ?
       ))`)
-    params.push(normalized, contains, contains, contains, contains, normalized)
+    params.push(normalized, contains, contains, contains, contains, contains, contains, normalized)
   }
   if (sbe1) {
     where.push('sbe1.name = ?')
@@ -47,13 +47,18 @@ export default defineEventHandler((event) => {
   const joins = `FROM ti_part tp
     LEFT JOIN ti_part_sbe1 assignment ON assignment.ti_part_id = tp.id
     LEFT JOIN sbe1 ON sbe1.id = assignment.sbe1_id
-    LEFT JOIN ti_part_sbe1_inference inference ON inference.ti_part_id = tp.id`
+    LEFT JOIN ti_part_sbe1_inference inference ON inference.ti_part_id = tp.id
+    LEFT JOIN ti_part_organization organization ON organization.ti_part_id = tp.id
+    LEFT JOIN sbe ON sbe.id = organization.sbe_id
+    LEFT JOIN sbe2 ON sbe2.id = organization.sbe2_id`
   const total = get<{ count: number }>(`SELECT count(*) AS count ${joins} ${clause}`, ...params)?.count || 0
   const items = all<any>(`SELECT
       tp.id,
       tp.display_part_number,
       tp.normalized_part_number,
+      sbe.name AS sbe_name,
       sbe1.name AS sbe1_name,
+      sbe2.name AS sbe2_name,
       sbe1.champion_email,
       CASE
         WHEN inference.ti_part_id IS NOT NULL THEN 'INFERRED'

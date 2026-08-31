@@ -517,6 +517,17 @@ textarea {
   font-size: 12px;
 }
 
+.ti-part-list .ti-part-organization {
+  display: grid;
+  grid-column: 1 / -1;
+  gap: 4px;
+  padding: 0;
+}
+
+.ti-part-list .ti-part-champion {
+  grid-column: 1 / -1;
+}
+
 .section-title {
   margin: 0;
   padding: 14px 22px;

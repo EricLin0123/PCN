@@ -45,6 +45,16 @@ CREATE TABLE IF NOT EXISTS sbe1 (
   champion_email TEXT
 );
 
+CREATE TABLE IF NOT EXISTS sbe (
+  id INTEGER PRIMARY KEY,
+  name TEXT NOT NULL UNIQUE
+);
+
+CREATE TABLE IF NOT EXISTS sbe2 (
+  id INTEGER PRIMARY KEY,
+  name TEXT NOT NULL UNIQUE
+);
+
 CREATE TABLE IF NOT EXISTS ti_part_sbe1 (
   ti_part_id INTEGER PRIMARY KEY REFERENCES ti_part(id) ON DELETE CASCADE,
   sbe1_id INTEGER NOT NULL REFERENCES sbe1(id)
@@ -57,6 +67,17 @@ CREATE TABLE IF NOT EXISTS ti_part_sbe1_inference (
   matched_prefix TEXT NOT NULL,
   evidence_count INTEGER NOT NULL,
   inferred_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS ti_part_organization (
+  ti_part_id INTEGER PRIMARY KEY REFERENCES ti_part(id) ON DELETE CASCADE,
+  sbe_id INTEGER REFERENCES sbe(id),
+  sbe1_id INTEGER REFERENCES sbe1(id),
+  sbe2_id INTEGER REFERENCES sbe2(id),
+  source_file TEXT NOT NULL,
+  source_sheet TEXT NOT NULL,
+  source_row INTEGER NOT NULL,
+  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS pcn_ti_part (
@@ -122,6 +143,9 @@ CREATE INDEX IF NOT EXISTS idx_pcn_date ON pcn(notification_date DESC);
 CREATE INDEX IF NOT EXISTS idx_pcn_change_type ON pcn(change_type_id);
 CREATE INDEX IF NOT EXISTS idx_pcn_ti_part_part ON pcn_ti_part(ti_part_id);
 CREATE INDEX IF NOT EXISTS idx_ti_part_sbe1_sbe1 ON ti_part_sbe1(sbe1_id);
+CREATE INDEX IF NOT EXISTS idx_ti_part_organization_sbe ON ti_part_organization(sbe_id);
+CREATE INDEX IF NOT EXISTS idx_ti_part_organization_sbe1 ON ti_part_organization(sbe1_id);
+CREATE INDEX IF NOT EXISTS idx_ti_part_organization_sbe2 ON ti_part_organization(sbe2_id);
 CREATE INDEX IF NOT EXISTS idx_delta_form_pcn ON delta_form(pcn_id);
 CREATE INDEX IF NOT EXISTS idx_delta_form_base ON delta_form(delta_pcn_number_base);
 CREATE INDEX IF NOT EXISTS idx_delta_form_status ON delta_form(form_status);

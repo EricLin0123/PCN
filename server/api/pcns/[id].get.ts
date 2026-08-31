@@ -11,7 +11,7 @@ export default defineEventHandler((event) => {
     JOIN pcn_operational_status ops ON ops.pcn_id = p.id WHERE p.id = ?`, id)
   if (!pcn) throw createError({ statusCode: 404, statusMessage: 'PCN not found' })
   const parts = all(`SELECT tp.id, tp.display_part_number, tp.normalized_part_number,
-      sbe1.name AS sbe1_name, sbe1.champion_email,
+      sbe.name AS sbe_name, sbe1.name AS sbe1_name, sbe2.name AS sbe2_name, sbe1.champion_email,
       EXISTS (
         SELECT 1
         FROM delta_form_item mapped_item
@@ -45,6 +45,9 @@ export default defineEventHandler((event) => {
     JOIN ti_part tp ON tp.id = pp.ti_part_id
     LEFT JOIN ti_part_sbe1 assignment ON assignment.ti_part_id = tp.id
     LEFT JOIN sbe1 ON sbe1.id = assignment.sbe1_id
+    LEFT JOIN ti_part_organization organization ON organization.ti_part_id = tp.id
+    LEFT JOIN sbe ON sbe.id = organization.sbe_id
+    LEFT JOIN sbe2 ON sbe2.id = organization.sbe2_id
     WHERE pp.pcn_id = ? ORDER BY tp.normalized_part_number`, id)
   const forms = all<any>(`SELECT df.* FROM delta_form df WHERE df.pcn_id = ? ORDER BY df.apply_date DESC, df.id DESC`, id)
   for (const form of forms) {
