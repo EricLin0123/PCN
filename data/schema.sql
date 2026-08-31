@@ -39,6 +39,26 @@ CREATE TABLE IF NOT EXISTS ti_part (
   display_part_number TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS sbe1 (
+  id INTEGER PRIMARY KEY,
+  name TEXT NOT NULL UNIQUE,
+  champion_email TEXT
+);
+
+CREATE TABLE IF NOT EXISTS ti_part_sbe1 (
+  ti_part_id INTEGER PRIMARY KEY REFERENCES ti_part(id) ON DELETE CASCADE,
+  sbe1_id INTEGER NOT NULL REFERENCES sbe1(id)
+);
+
+CREATE TABLE IF NOT EXISTS ti_part_sbe1_inference (
+  ti_part_id INTEGER PRIMARY KEY REFERENCES ti_part(id) ON DELETE CASCADE,
+  sbe1_id INTEGER NOT NULL REFERENCES sbe1(id),
+  reference_file TEXT NOT NULL,
+  matched_prefix TEXT NOT NULL,
+  evidence_count INTEGER NOT NULL,
+  inferred_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE IF NOT EXISTS pcn_ti_part (
   pcn_id INTEGER NOT NULL REFERENCES pcn(id) ON DELETE CASCADE,
   ti_part_id INTEGER NOT NULL REFERENCES ti_part(id),
@@ -101,6 +121,7 @@ CREATE TABLE IF NOT EXISTS risk_assessment_ti_part (
 CREATE INDEX IF NOT EXISTS idx_pcn_date ON pcn(notification_date DESC);
 CREATE INDEX IF NOT EXISTS idx_pcn_change_type ON pcn(change_type_id);
 CREATE INDEX IF NOT EXISTS idx_pcn_ti_part_part ON pcn_ti_part(ti_part_id);
+CREATE INDEX IF NOT EXISTS idx_ti_part_sbe1_sbe1 ON ti_part_sbe1(sbe1_id);
 CREATE INDEX IF NOT EXISTS idx_delta_form_pcn ON delta_form(pcn_id);
 CREATE INDEX IF NOT EXISTS idx_delta_form_base ON delta_form(delta_pcn_number_base);
 CREATE INDEX IF NOT EXISTS idx_delta_form_status ON delta_form(form_status);
@@ -133,36 +154,46 @@ BEGIN
   SELECT RAISE(ABORT, 'TI part is covered by a risk assessment');
 END;
 
-CREATE VIEW IF NOT EXISTS pcn_upload_coverage AS
+-- Upload coverage applies only to TI parts with a known Delta material mapping.
+-- Authoritative TI parts that have never been sold to Delta remain visible, but
+-- do not prevent the PCN from being considered fully uploaded.
+DROP VIEW IF EXISTS pcn_executive_status;
+DROP VIEW IF EXISTS pcn_ra_coverage;
+DROP VIEW IF EXISTS pcn_operational_status;
+DROP VIEW IF EXISTS pcn_upload_coverage;
+DROP VIEW IF EXISTS pcn_expected_risk;
+
+CREATE VIEW pcn_upload_coverage AS
+SELECT
+  coverage.*,
+  CASE
+    WHEN coverage.uploaded_parts = 0 THEN 'NOT_UPLOADED'
+    WHEN coverage.uploaded_parts < coverage.delta_relevant_parts THEN 'PARTLY_UPLOADED'
+    ELSE 'ALL_UPLOADED'
+  END AS upload_state
+FROM (
 SELECT
   p.id AS pcn_id,
   count(pp.ti_part_id) AS total_parts,
+  sum(CASE WHEN EXISTS (
+    SELECT 1
+    FROM delta_form_item mapped_item
+    WHERE mapped_item.ti_part_number_normalized = tp.normalized_part_number
+      AND mapped_item.delta_part_id IS NOT NULL
+  ) THEN 1 ELSE 0 END) AS delta_relevant_parts,
   sum(CASE WHEN EXISTS (
     SELECT 1
     FROM delta_form df
     JOIN delta_form_item dfi ON dfi.delta_form_id = df.id
     WHERE df.delta_pcn_number_base = p.pcn_number_base
       AND dfi.ti_part_number_normalized = tp.normalized_part_number
-  ) THEN 1 ELSE 0 END) AS uploaded_parts,
-  CASE
-    WHEN sum(CASE WHEN EXISTS (
-      SELECT 1 FROM delta_form df
-      JOIN delta_form_item dfi ON dfi.delta_form_id = df.id
-      WHERE df.delta_pcn_number_base = p.pcn_number_base
-        AND dfi.ti_part_number_normalized = tp.normalized_part_number
-    ) THEN 1 ELSE 0 END) = 0 THEN 'NOT_UPLOADED'
-    WHEN sum(CASE WHEN EXISTS (
-      SELECT 1 FROM delta_form df
-      JOIN delta_form_item dfi ON dfi.delta_form_id = df.id
-      WHERE df.delta_pcn_number_base = p.pcn_number_base
-        AND dfi.ti_part_number_normalized = tp.normalized_part_number
-    ) THEN 1 ELSE 0 END) < count(pp.ti_part_id) THEN 'PARTLY_UPLOADED'
-    ELSE 'ALL_UPLOADED'
-  END AS upload_state
+      AND dfi.delta_part_id IS NOT NULL
+  ) THEN 1 ELSE 0 END) AS uploaded_parts
 FROM pcn p
 LEFT JOIN pcn_ti_part pp ON pp.pcn_id = p.id
 LEFT JOIN ti_part tp ON tp.id = pp.ti_part_id
-GROUP BY p.id;
+GROUP BY p.id
+) coverage;
 
 DROP VIEW IF EXISTS pcn_executive_status;
 DROP VIEW IF EXISTS pcn_ra_coverage;
@@ -200,6 +231,7 @@ CREATE VIEW pcn_operational_status AS
 SELECT
   p.id AS pcn_id,
   coverage.total_parts,
+  coverage.delta_relevant_parts,
   coverage.uploaded_parts,
   coverage.upload_state,
   expected.expected_risk,

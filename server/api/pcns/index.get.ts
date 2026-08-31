@@ -79,8 +79,9 @@ export default defineEventHandler((event) => {
              SELECT 1
              FROM delta_form df3
              JOIN delta_form_item dfi3 ON dfi3.delta_form_id = df3.id
-             WHERE df3.pcn_id = p.id
+             WHERE df3.delta_pcn_number_base = p.pcn_number_base
                AND dfi3.ti_part_number_normalized = tp3.normalized_part_number
+               AND dfi3.delta_part_id IS NOT NULL
            )
          ORDER BY tp3.normalized_part_number
        ) received) AS delta_received_parts,
@@ -90,11 +91,16 @@ export default defineEventHandler((event) => {
          FROM pcn_ti_part pp4
          JOIN ti_part tp4 ON tp4.id = pp4.ti_part_id
          WHERE pp4.pcn_id = p.id
+           AND EXISTS (
+             SELECT 1 FROM delta_form_item mapped_item4
+             WHERE mapped_item4.ti_part_number_normalized = tp4.normalized_part_number
+               AND mapped_item4.delta_part_id IS NOT NULL
+           )
            AND NOT EXISTS (
              SELECT 1
              FROM delta_form df4
              JOIN delta_form_item dfi4 ON dfi4.delta_form_id = df4.id
-             WHERE df4.pcn_id = p.id
+             WHERE df4.delta_pcn_number_base = p.pcn_number_base
                AND dfi4.ti_part_number_normalized = tp4.normalized_part_number
            )
          ORDER BY tp4.normalized_part_number
@@ -103,7 +109,7 @@ export default defineEventHandler((event) => {
       (SELECT count(*) FROM risk_assessment ra WHERE ra.pcn_id = p.id) AS ra_count,
       (SELECT group_concat(DISTINCT COALESCE(df.form_status, 'UNSPECIFIED')) FROM delta_form df WHERE df.pcn_id = p.id) AS statuses,
       pds.delta_status,
-      ops.total_parts, ops.uploaded_parts, ops.upload_state, ops.delta_risks, ops.risk_alignment,
+      ops.total_parts, ops.delta_relevant_parts, ops.uploaded_parts, ops.upload_state, ops.delta_risks, ops.risk_alignment,
       rac.ra_covered_parts, rac.ra_state
     FROM pcn p LEFT JOIN change_type ct ON ct.id = p.change_type_id
     JOIN pcn_operational_status ops ON ops.pcn_id = p.id

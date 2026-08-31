@@ -5,20 +5,46 @@ export default defineEventHandler((event) => {
   const pcn = get<any>(`SELECT p.id, p.pcn_number_base, p.notification_date, p.title, p.change_type_id,
       ct.name AS change_type, ct.default_risk, p.risk_override,
       ops.expected_risk,
-      p.notes, p.created_at, p.updated_at, ops.total_parts, ops.uploaded_parts,
+      p.notes, p.created_at, p.updated_at, ops.total_parts, ops.delta_relevant_parts, ops.uploaded_parts,
       ops.upload_state, ops.delta_risks, ops.risk_alignment
     FROM pcn p LEFT JOIN change_type ct ON ct.id = p.change_type_id
     JOIN pcn_operational_status ops ON ops.pcn_id = p.id WHERE p.id = ?`, id)
   if (!pcn) throw createError({ statusCode: 404, statusMessage: 'PCN not found' })
   const parts = all(`SELECT tp.id, tp.display_part_number, tp.normalized_part_number,
+      sbe1.name AS sbe1_name, sbe1.champion_email,
+      EXISTS (
+        SELECT 1
+        FROM delta_form_item mapped_item
+        WHERE mapped_item.ti_part_number_normalized = tp.normalized_part_number
+          AND mapped_item.delta_part_id IS NOT NULL
+      ) AS has_delta_part,
+      (SELECT group_concat(mapping.display_part_number, ', ')
+       FROM (
+         SELECT DISTINCT dp.display_part_number, dp.normalized_part_number
+         FROM delta_form_item mapped_item
+         JOIN delta_part dp ON dp.id = mapped_item.delta_part_id
+         WHERE mapped_item.ti_part_number_normalized = tp.normalized_part_number
+         ORDER BY dp.normalized_part_number
+       ) mapping) AS delta_part_numbers,
       EXISTS (
         SELECT 1
         FROM delta_form df
         JOIN delta_form_item dfi ON dfi.delta_form_id = df.id
-        WHERE df.pcn_id = pp.pcn_id
+        WHERE df.delta_pcn_number_base = p.pcn_number_base
           AND dfi.ti_part_number_normalized = tp.normalized_part_number
-      ) AS is_on_delta
-    FROM pcn_ti_part pp JOIN ti_part tp ON tp.id = pp.ti_part_id
+          AND dfi.delta_part_id IS NOT NULL
+      ) AS is_on_delta,
+      EXISTS (
+        SELECT 1
+        FROM risk_assessment ra
+        JOIN risk_assessment_ti_part rp ON rp.risk_assessment_id = ra.id
+        WHERE ra.pcn_id = p.id AND rp.ti_part_id = tp.id
+      ) AS has_ra
+    FROM pcn_ti_part pp
+    JOIN pcn p ON p.id = pp.pcn_id
+    JOIN ti_part tp ON tp.id = pp.ti_part_id
+    LEFT JOIN ti_part_sbe1 assignment ON assignment.ti_part_id = tp.id
+    LEFT JOIN sbe1 ON sbe1.id = assignment.sbe1_id
     WHERE pp.pcn_id = ? ORDER BY tp.normalized_part_number`, id)
   const forms = all<any>(`SELECT df.* FROM delta_form df WHERE df.pcn_id = ? ORDER BY df.apply_date DESC, df.id DESC`, id)
   for (const form of forms) {

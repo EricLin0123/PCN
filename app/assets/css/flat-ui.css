@@ -475,6 +475,12 @@ textarea {
   color: #fff;
 }
 
+.ti-part-list li.ti-part-no-delta,
+.ti-part-list li.ti-part-no-delta::before {
+  background: #b8b8b8;
+  color: #111;
+}
+
 .ti-part-list li::before {
   content: counter(ti-part);
   display: grid;
@@ -493,6 +499,22 @@ textarea {
   font-family: 'DM Mono', monospace;
   font-size: 14px;
   font-weight: 600;
+}
+
+.ti-part-list .ti-part-pair {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+}
+
+.ti-part-list .ti-part-pair strong,
+.ti-part-list .ti-part-pair small {
+  overflow-wrap: anywhere;
+}
+
+.ti-part-list .ti-part-pair small {
+  font-size: 12px;
 }
 
 .section-title {

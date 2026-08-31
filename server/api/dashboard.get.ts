@@ -27,7 +27,7 @@ export default defineEventHandler(() => {
     FROM pcn p JOIN pcn_expected_risk expected ON expected.pcn_id = p.id
     ORDER BY p.notification_date DESC, p.id DESC LIMIT 8`)
   const mismatches = all(`SELECT p.id, p.pcn_number_base, p.title, ops.expected_risk, ops.delta_risks,
-      ops.upload_state, ops.uploaded_parts, ops.total_parts
+      ops.upload_state, ops.uploaded_parts, ops.total_parts, ops.delta_relevant_parts
     FROM pcn_operational_status ops JOIN pcn p ON p.id = ops.pcn_id
     WHERE ops.risk_alignment = 'MISMATCH' ORDER BY p.notification_date DESC LIMIT 8`)
   return { totals, risk, statuses, uploadStates, riskAlignment, changeTypes, recent, mismatches }

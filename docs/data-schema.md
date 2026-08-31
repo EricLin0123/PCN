@@ -10,6 +10,10 @@ erDiagram
     CHANGE_TYPE ||--o{ PCN : classifies
     PCN ||--o{ PCN_TI_PART : affects
     TI_PART ||--o{ PCN_TI_PART : appears_in
+    TI_PART ||--o| TI_PART_SBE1 : owned_by
+    SBE1 ||--o{ TI_PART_SBE1 : owns
+    TI_PART ||--o| TI_PART_SBE1_INFERENCE : records
+    SBE1 ||--o{ TI_PART_SBE1_INFERENCE : inferred_as
 
     PCN o|--o{ DELTA_FORM : matched_by_base
     DELTA_FORM ||--o{ DELTA_FORM_ITEM : contains
@@ -41,6 +45,26 @@ erDiagram
         INTEGER id PK
         TEXT normalized_part_number UK
         TEXT display_part_number
+    }
+
+    SBE1 {
+        INTEGER id PK
+        TEXT name UK
+        TEXT champion_email "nullable when source is blank"
+    }
+
+    TI_PART_SBE1 {
+        INTEGER ti_part_id PK,FK
+        INTEGER sbe1_id FK
+    }
+
+    TI_PART_SBE1_INFERENCE {
+        INTEGER ti_part_id PK,FK
+        INTEGER sbe1_id FK
+        TEXT reference_file
+        TEXT matched_prefix
+        INTEGER evidence_count
+        TEXT inferred_at
     }
 
     PCN_TI_PART {
@@ -152,6 +176,12 @@ flowchart LR
 
 - A normalized TI PCN base is unique and contains exactly 11 digits.
 - A PCN can affect many TI parts, and a TI part can appear in many PCNs.
+- A TI part belongs to at most one SBE-1; each SBE-1 supplies a champion email
+  used to request missing risk assessments. Unknown ownership and blank contact
+  data remain null rather than being inferred.
+- The BU contact list may be used to infer only missing ownership. An inference
+  is accepted when its workbook product-family rule and a non-conflicting
+  authoritative part-number prefix agree; existing assignments are preserved.
 - A PCN can have many Delta forms while preserving each complete suffixed Delta
   PCN number.
 - One risk assessment belongs to at most one PCN; one PCN can have many risk

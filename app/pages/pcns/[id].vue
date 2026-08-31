@@ -5,6 +5,22 @@ const { data: changeTypes } = await useFetch<any[]>('/api/change-types')
 const editing = ref(false), saving = ref(false), message = ref(''), messageType = ref('success')
 const form = reactive<any>({})
 const newRa = reactive({ ra_number: '', workbook_filename: '', part_numbers: [] as string[] })
+const raRequests = computed(() => {
+  if (data.value?.pcn.expected_risk !== 'MAJOR') return []
+  const groups = new Map<string, any>()
+  for (const part of data.value?.parts || []) {
+    if (part.has_ra) continue
+    const key = part.sbe1_name || ''
+    if (!groups.has(key)) groups.set(key, { sbe1_name: key, champion_email: part.champion_email || '', parts: [] })
+    groups.get(key).parts.push(part.display_part_number)
+  }
+  return [...groups.values()]
+})
+function raMailto(request: any) {
+  const subject = `RA request for TI PCN ${data.value.pcn.pcn_number_base}`
+  const body = `Please provide the risk assessment for TI PCN ${data.value.pcn.pcn_number_base}.\n\nAffected ${request.sbe1_name || 'unassigned'} parts:\n${request.parts.join('\n')}`
+  return `mailto:${request.champion_email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
+}
 watch(data, value => {
   if (!value) return
   Object.assign(form, value.pcn)
@@ -61,11 +77,11 @@ async function deleteAssessment(assessment: any) {
 
       <section class="detail-grid">
         <article class="panel facts-panel"><div class="panel-heading"><div><h2>Notification facts</h2><p>Authoritative PCN metadata</p></div><Icon name="lucide:file-text" /></div>
-          <dl class="facts"><div><dt>Notification date</dt><dd>{{ data.pcn.notification_date || 'Not set' }}</dd></div><div><dt>Change type</dt><dd>{{ data.pcn.change_type || 'Unspecified' }}</dd></div><div><dt>Expected risk</dt><dd><RiskBadge :risk="data.pcn.expected_risk" /></dd></div><div><dt>Manual override</dt><dd>{{ data.pcn.risk_override || 'None' }}</dd></div><div><dt>Upload state</dt><dd><StateBadge :state="data.pcn.upload_state" /> <small class="coverage-count">{{ data.pcn.uploaded_parts }}/{{ data.pcn.total_parts }} parts</small></dd></div><div><dt>Delta risk check</dt><dd><StateBadge :state="data.pcn.risk_alignment" /> <small v-if="data.pcn.delta_risks" class="coverage-count">Delta: {{ data.pcn.delta_risks }}</small></dd></div></dl>
+          <dl class="facts"><div><dt>Notification date</dt><dd>{{ data.pcn.notification_date || 'Not set' }}</dd></div><div><dt>Change type</dt><dd>{{ data.pcn.change_type || 'Unspecified' }}</dd></div><div><dt>Expected risk</dt><dd><RiskBadge :risk="data.pcn.expected_risk" /></dd></div><div><dt>Manual override</dt><dd>{{ data.pcn.risk_override || 'None' }}</dd></div><div><dt>Upload state</dt><dd><StateBadge :state="data.pcn.upload_state" /> <small class="coverage-count">{{ data.pcn.uploaded_parts }}/{{ data.pcn.delta_relevant_parts }} Delta parts</small></dd></div><div><dt>Delta risk check</dt><dd><StateBadge :state="data.pcn.risk_alignment" /> <small v-if="data.pcn.delta_risks" class="coverage-count">Delta: {{ data.pcn.delta_risks }}</small></dd></div></dl>
           <div v-if="data.pcn.notes" class="notes"><strong>Internal notes</strong><p>{{ data.pcn.notes }}</p></div>
         </article>
         <article class="panel parts-panel"><div class="panel-heading"><div><h2>TI affected parts</h2><p>{{ data.parts.length }} authoritative relationships</p></div><Icon name="lucide:cpu" /></div>
-          <ol v-if="data.parts.length" class="ti-part-list"><li v-for="part in data.parts" :key="part.id" :class="part.is_on_delta ? 'ti-part-on-delta' : 'ti-part-not-on-delta'"><span>{{ part.display_part_number }}</span></li></ol>
+          <ol v-if="data.parts.length" class="ti-part-list"><li v-for="part in data.parts" :key="part.id" :class="!part.has_delta_part ? 'ti-part-no-delta' : part.is_on_delta ? 'ti-part-on-delta' : 'ti-part-not-on-delta'"><span class="ti-part-pair"><strong>{{ part.display_part_number }}</strong><small>{{ part.delta_part_numbers || 'No Delta part number' }}</small><small>SBE-1: {{ part.sbe1_name || '—' }} · Champion: {{ part.champion_email || '—' }}</small></span></li></ol>
           <EmptyState v-else title="No TI parts" text="No authoritative TI affected parts are recorded for this PCN." icon="lucide:cpu" />
         </article>
       </section>
@@ -79,6 +95,13 @@ async function deleteAssessment(assessment: any) {
 
       <section class="ra-section">
         <div class="section-title"><div><p class="eyebrow">Risk coverage</p><h2>Risk assessments</h2></div><span class="section-count">{{ data.riskAssessments.length }}</span></div>
+        <div v-if="raRequests.length" class="ra-request-list">
+          <article v-for="request in raRequests" :key="request.sbe1_name || 'unassigned'" class="panel ra-request">
+            <div><strong>{{ request.sbe1_name || 'SBE-1 not assigned' }}</strong><p>{{ request.parts.length }} part{{ request.parts.length === 1 ? '' : 's' }} still require RA</p></div>
+            <a v-if="request.champion_email" class="button primary" :href="raMailto(request)"><Icon name="lucide:mail" /> Request RA from {{ request.champion_email }}</a>
+            <span v-else class="ra-contact-missing">Champion email not available</span>
+          </article>
+        </div>
         <form class="panel ra-add" @submit.prevent="addAssessment">
           <div><label>RA number</label><input v-model="newRa.ra_number" required placeholder="185" /></div>
           <div><label>RA workbook filename</label><input v-model="newRa.workbook_filename" placeholder="PCN_…__MPN_….xlsx" /></div>

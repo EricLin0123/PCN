@@ -17,6 +17,36 @@
   margin-bottom: 12px;
 }
 
+.ra-request-list {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.ra-request {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 14px 17px;
+}
+
+.ra-request strong {
+  font-size: 12px;
+}
+
+.ra-request p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.ra-contact-missing {
+  color: #8b2f3f;
+  font-size: 11px;
+  font-weight: 700;
+}
+
 .ra-add > div,
 .ra-file,
 .ra-parts {
@@ -104,8 +134,14 @@
   .metric-grid,
   .loading-grid,
   .ra-add,
-  .ra-card {
+  .ra-card,
+  .ra-request {
     grid-template-columns: 1fr;
+  }
+
+  .ra-request {
+    align-items: stretch;
+    flex-direction: column;
   }
 
   .ra-parts,

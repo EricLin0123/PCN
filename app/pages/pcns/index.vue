@@ -60,7 +60,7 @@ async function exportToExcel() {
       { header: 'Expected Risk', key: 'risk', width: 17 },
       { header: 'Upload State', key: 'uploadState', width: 22 },
       { header: 'Uploaded Parts', key: 'uploadedParts', width: 16 },
-      { header: 'Total Parts', key: 'totalParts', width: 13 },
+      { header: 'Delta-Relevant Parts', key: 'totalParts', width: 20 },
       { header: 'Delta Status', key: 'deltaStatus', width: 18 },
       { header: 'Risk Alignment', key: 'riskAlignment', width: 20 },
       { header: 'Delta Risk', key: 'deltaRisk', width: 18 },
@@ -84,7 +84,7 @@ async function exportToExcel() {
         risk: displayState(pcn.risk),
         uploadState: displayState(pcn.upload_state),
         uploadedParts: pcn.uploaded_parts,
-        totalParts: pcn.total_parts,
+        totalParts: pcn.delta_relevant_parts,
         deltaStatus: displayState(pcn.delta_status),
         riskAlignment: displayState(pcn.risk_alignment),
         deltaRisk: pcn.delta_risks || '',
@@ -146,7 +146,7 @@ async function exportToExcel() {
         <tbody><tr v-for="pcn in data.items" :key="pcn.id">
           <td><NuxtLink :to="`/pcns/${pcn.id}`" class="record-title"><span class="mono-link">{{ pcn.pcn_number_base }}</span><small>{{ pcn.title }}</small></NuxtLink></td>
           <td>{{ pcn.change_type || 'Unspecified' }}</td><td class="fill-cell" :class="`fill-${pcn.risk.toLowerCase()}`"><RiskBadge :risk="pcn.risk" /></td>
-          <td class="fill-cell" :class="`fill-${pcn.upload_state.toLowerCase().replaceAll('_', '-')}`"><StateBadge :state="pcn.upload_state" /><small class="coverage-count">{{ pcn.uploaded_parts }}/{{ pcn.total_parts }} parts</small></td>
+          <td class="fill-cell" :class="`fill-${pcn.upload_state.toLowerCase().replaceAll('_', '-')}`"><StateBadge :state="pcn.upload_state" /><small class="coverage-count">{{ pcn.uploaded_parts }}/{{ pcn.delta_relevant_parts }} Delta parts</small></td>
           <td class="fill-cell delta-status-cell" :class="`fill-delta-${pcn.delta_status.toLowerCase()}`"><strong v-if="pcn.delta_status !== 'BLANK'">{{ pcn.delta_status }}</strong><small v-if="pcn.statuses && pcn.statuses !== pcn.delta_status" class="coverage-count">{{ pcn.statuses }}</small></td>
           <td class="fill-cell" :class="`fill-${pcn.risk_alignment.toLowerCase().replaceAll('_', '-')}`"><StateBadge :state="pcn.risk_alignment" kind="alignment" /><small v-if="pcn.delta_risks" class="coverage-count">Delta: {{ pcn.delta_risks }}</small></td>
           <td class="fill-cell" :class="`fill-ra-${pcn.ra_state.toLowerCase().replaceAll('_', '-')}`"><template v-if="pcn.ra_state !== 'NA'"><StateBadge :state="pcn.ra_state" /><small class="coverage-count">{{ pcn.ra_covered_parts }}/{{ pcn.total_parts }} parts</small></template></td>
