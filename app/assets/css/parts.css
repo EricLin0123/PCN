@@ -1,0 +1,102 @@
+.parts-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  border-bottom: 1px solid var(--line);
+}
+
+.parts-metrics > div {
+  padding: 15px 28px;
+  background: #eaf0f5;
+  border-right: 1px solid var(--line);
+}
+
+.parts-metrics span,
+.parts-metrics strong {
+  display: block;
+}
+
+.parts-metrics span {
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.parts-metrics strong {
+  margin-top: 4px;
+  font-size: 20px;
+}
+
+.parts-list-panel {
+  border-width: 0 0 1px;
+}
+
+.parts-table {
+  min-width: 1280px;
+}
+
+.parts-table th:first-child {
+  min-width: 260px;
+}
+
+.parts-table th:nth-child(2),
+.parts-table th:nth-child(3) {
+  min-width: 155px;
+}
+
+.parts-table td {
+  vertical-align: top;
+}
+
+.part-number,
+.part-secondary {
+  display: block;
+}
+
+.part-secondary {
+  margin-top: 5px;
+  color: var(--muted);
+  font-size: 9px;
+}
+
+.ownership-label {
+  display: inline-block;
+  padding: 4px 6px;
+  border: 1px solid #111;
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: .05em;
+}
+
+.ownership-authoritative {
+  background: #00ed4b;
+}
+
+.ownership-inferred {
+  background: #fff000;
+}
+
+.ownership-unassigned {
+  color: #fff;
+  background: #6b7280;
+}
+
+.email-link,
+.related-links a {
+  color: #174f86;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.related-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+}
+
+@media (max-width: 900px) {
+  .parts-metrics {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}

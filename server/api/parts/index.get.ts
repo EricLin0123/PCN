@@ -1,0 +1,123 @@
+import { all, get } from '../../utils/db'
+
+function splitValues(value: string | null) {
+  return value ? value.split('|').filter(Boolean) : []
+}
+
+export default defineEventHandler((event) => {
+  const query = getQuery(event)
+  const page = Math.max(1, Number(query.page) || 1)
+  const pageSize = Math.min(100, Math.max(10, Number(query.pageSize) || 50))
+  const search = String(query.search || '').trim()
+  const sbe1 = String(query.sbe1 || '').trim().toUpperCase()
+  const source = String(query.source || '').trim().toUpperCase()
+  const where: string[] = []
+  const params: any[] = []
+
+  if (search) {
+    const contains = `%${search}%`
+    const normalized = `%${search.toUpperCase()}%`
+    where.push(`(tp.normalized_part_number LIKE ? OR sbe1.name LIKE ? OR sbe1.champion_email LIKE ?
+      OR EXISTS (
+        SELECT 1 FROM pcn_ti_part pp
+        JOIN pcn ON pcn.id = pp.pcn_id
+        WHERE pp.ti_part_id = tp.id AND pcn.pcn_number_base LIKE ?
+      ) OR EXISTS (
+        SELECT 1 FROM risk_assessment_ti_part rp
+        JOIN risk_assessment ra ON ra.id = rp.risk_assessment_id
+        WHERE rp.ti_part_id = tp.id AND ra.ra_number LIKE ?
+      ) OR EXISTS (
+        SELECT 1 FROM delta_form_item dfi
+        JOIN delta_part dp ON dp.id = dfi.delta_part_id
+        WHERE dfi.ti_part_number_normalized = tp.normalized_part_number
+          AND dp.normalized_part_number LIKE ?
+      ))`)
+    params.push(normalized, contains, contains, contains, contains, normalized)
+  }
+  if (sbe1) {
+    where.push('sbe1.name = ?')
+    params.push(sbe1)
+  }
+  if (source === 'AUTHORITATIVE') where.push('assignment.ti_part_id IS NOT NULL AND inference.ti_part_id IS NULL')
+  if (source === 'INFERRED') where.push('inference.ti_part_id IS NOT NULL')
+  if (source === 'UNASSIGNED') where.push('assignment.ti_part_id IS NULL')
+  if (source === 'ASSIGNED') where.push('assignment.ti_part_id IS NOT NULL')
+
+  const clause = where.length ? `WHERE ${where.join(' AND ')}` : ''
+  const joins = `FROM ti_part tp
+    LEFT JOIN ti_part_sbe1 assignment ON assignment.ti_part_id = tp.id
+    LEFT JOIN sbe1 ON sbe1.id = assignment.sbe1_id
+    LEFT JOIN ti_part_sbe1_inference inference ON inference.ti_part_id = tp.id`
+  const total = get<{ count: number }>(`SELECT count(*) AS count ${joins} ${clause}`, ...params)?.count || 0
+  const items = all<any>(`SELECT
+      tp.id,
+      tp.display_part_number,
+      tp.normalized_part_number,
+      sbe1.name AS sbe1_name,
+      sbe1.champion_email,
+      CASE
+        WHEN inference.ti_part_id IS NOT NULL THEN 'INFERRED'
+        WHEN assignment.ti_part_id IS NOT NULL THEN 'AUTHORITATIVE'
+        ELSE 'UNASSIGNED'
+      END AS ownership_source,
+      inference.matched_prefix,
+      inference.evidence_count,
+      inference.inferred_at,
+      (SELECT count(*) FROM pcn_ti_part pp WHERE pp.ti_part_id = tp.id) AS pcn_count,
+      (SELECT group_concat(linked.value, '|') FROM (
+        SELECT p.id || '^' || p.pcn_number_base AS value
+        FROM pcn_ti_part pp
+        JOIN pcn p ON p.id = pp.pcn_id
+        WHERE pp.ti_part_id = tp.id
+        ORDER BY p.notification_date DESC, p.pcn_number_base DESC
+      ) linked) AS pcn_links,
+      (SELECT count(DISTINCT rp.risk_assessment_id)
+       FROM risk_assessment_ti_part rp WHERE rp.ti_part_id = tp.id) AS ra_count,
+      (SELECT group_concat(covered.ra_number, ', ') FROM (
+        SELECT DISTINCT ra.ra_number
+        FROM risk_assessment_ti_part rp
+        JOIN risk_assessment ra ON ra.id = rp.risk_assessment_id
+        WHERE rp.ti_part_id = tp.id
+        ORDER BY CASE WHEN ra.ra_number GLOB '[0-9]*' THEN CAST(ra.ra_number AS INTEGER) END, ra.ra_number
+      ) covered) AS ra_numbers,
+      (SELECT group_concat(mapped.display_part_number, ', ') FROM (
+        SELECT DISTINCT dp.display_part_number, dp.normalized_part_number
+        FROM delta_form_item dfi
+        JOIN delta_part dp ON dp.id = dfi.delta_part_id
+        WHERE dfi.ti_part_number_normalized = tp.normalized_part_number
+        ORDER BY dp.normalized_part_number
+      ) mapped) AS delta_part_numbers
+    ${joins}
+    ${clause}
+    ORDER BY tp.normalized_part_number
+    LIMIT ? OFFSET ?`, ...params, pageSize, (page - 1) * pageSize)
+
+  for (const item of items) {
+    item.pcns = splitValues(item.pcn_links).map((value) => {
+      const [id, pcnNumber] = value.split('^')
+      return { id: Number(id), pcn_number_base: pcnNumber }
+    })
+    delete item.pcn_links
+  }
+
+  const totals = get<any>(`SELECT
+      count(*) AS parts,
+      count(assignment.ti_part_id) AS assigned,
+      count(inference.ti_part_id) AS inferred,
+      sum(CASE WHEN assignment.ti_part_id IS NULL THEN 1 ELSE 0 END) AS unassigned
+    ${joins}`)
+  const sbe1Options = all(`SELECT sbe1.name, count(assignment.ti_part_id) AS part_count
+    FROM sbe1
+    LEFT JOIN ti_part_sbe1 assignment ON assignment.sbe1_id = sbe1.id
+    GROUP BY sbe1.id ORDER BY sbe1.name`)
+
+  return {
+    items,
+    total,
+    page,
+    pageSize,
+    pages: Math.max(1, Math.ceil(total / pageSize)),
+    totals,
+    sbe1Options
+  }
+})
