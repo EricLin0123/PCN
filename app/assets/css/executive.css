@@ -12,10 +12,6 @@
 .executive-total strong { font-size: 30px; }
 .executive-total small { font-size: 13px; }
 .executive-sheet,.exception-sheet { margin: 0; background: #fff; }
-.executive-chart-section { padding: 4px 24px 26px; background: #e8edf3; border-bottom: 8px solid #172536; }
-.executive-chart-section .section-title { align-items: flex-start; }
-.executive-chart-section .section-title small { display: block; margin-top: 5px; color: #526174; font-size: 12px; }
-.executive-chart-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
 .executive-chart-card { min-width: 0; padding: 20px; }
 .executive-chart-card header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding-bottom: 14px; border-bottom: 1px solid #aeb8c5; }
 .executive-chart-card header h2,.executive-chart-card header p { margin: 0; }
@@ -23,6 +19,8 @@
 .executive-chart-card header > strong { padding: 5px 8px; color: #fff; background: #174f86; font-size: 12px; white-space: nowrap; }
 .executive-chart-canvas { position: relative; height: 380px; margin-top: 16px; padding-bottom: 24px; }
 .executive-chart-canvas > small { position: absolute; right: 0; bottom: 0; left: 0; color: #526174; font-size: 11px; text-align: center; }
+.queue-revenue-chart { padding: 18px; background: #e8edf3; border-top: 1px solid #aeb8c5; }
+.queue-revenue-chart .executive-chart-card { max-width: 720px; margin: 0 auto; }
 .exception-sheet { border-top: 8px solid #172536; }
 .executive-sheet table,.exception-sheet table { table-layout: fixed; }
 .executive-sheet th,.exception-sheet th { position: sticky; top: 0; z-index: 4; background: #7f8d9c; color: #fff; font-size: 12px; }
@@ -48,5 +46,4 @@
 .executive-black { background: #000 !important; color: #fff; }
 .executive-magenta { background: #ff008c !important; color: #fff; }
 .clear-filter { margin-left: 8px; padding: 2px 5px; background: #fff; border: 1px solid #657484; color: #000; font-weight: 700; }
-@media(max-width:900px){.executive-chart-grid{grid-template-columns:1fr}}
-@media(max-width:760px){.sidebar nav{grid-template-columns:repeat(4,1fr)}.executive-chart-section{padding:4px 16px 20px}.executive-chart-canvas{height:340px}.executive-sheet,.exception-sheet{overflow-x:auto}.executive-sheet table,.exception-sheet table{min-width:900px}}
+@media(max-width:760px){.sidebar nav{grid-template-columns:repeat(4,1fr)}.executive-chart-canvas{height:340px}.executive-sheet,.exception-sheet{overflow-x:auto}.executive-sheet table,.exception-sheet table{min-width:900px}}

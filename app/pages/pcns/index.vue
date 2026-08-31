@@ -13,11 +13,15 @@ const revenueFrom = ref(String(route.query.revenueFrom || '2025-08'))
 const revenueTo = ref(String(route.query.revenueTo || '2026-08'))
 const isRevenuePriorityQueue = computed(() => ['MINOR_READY_UPLOAD', 'MAJOR_BLOCKED_RA', 'MAJOR_READY_UPLOAD'].includes(executiveState.value))
 const isMinorRevenuePriorityQueue = computed(() => executiveState.value === 'MINOR_READY_UPLOAD')
+const revenueChartTitle = computed(() => executiveState.value === 'MINOR_READY_UPLOAD' ? 'Minor ready for upload' : 'Major blocked by RA')
 const exporting = ref(false)
 const exportError = ref('')
 const query = computed(() => ({ search: String(route.query.search || ''), risk: String(route.query.risk || ''), status: String(route.query.status || ''), uploadState: String(route.query.uploadState || ''), riskAlignment: String(route.query.riskAlignment || ''), raState: String(route.query.raState || ''), changeType: String(route.query.changeType || ''), executiveState: String(route.query.executiveState || ''), revenueFrom: String(route.query.revenueFrom || '2025-08'), revenueTo: String(route.query.revenueTo || '2026-08'), pageSize: 'all' }))
 const { data, status, refresh } = await useFetch<any>('/api/pcns', { query, watch: [query] })
 const { data: changeTypes } = await useFetch<any[]>('/api/change-types')
+const revenueChartItems = computed(() => (data.value?.items || [])
+  .filter((pcn: any) => Number(pcn.net_revenue) > 0)
+  .map((pcn: any) => ({ pcnNumber: String(pcn.pcn_number_base), netRevenue: Number(pcn.net_revenue) })))
 let timer: ReturnType<typeof setTimeout>
 function activeFilters() {
   return { ...(search.value && { search: search.value }), ...(changeType.value && { changeType: changeType.value }), ...(risk.value && { risk: risk.value }), ...(statusFilter.value && { status: statusFilter.value }), ...(uploadState.value && { uploadState: uploadState.value }), ...(riskAlignment.value && { riskAlignment: riskAlignment.value }), ...(raState.value && { raState: raState.value }), ...(executiveState.value && { executiveState: executiveState.value }), ...(isRevenuePriorityQueue.value && { revenueFrom: revenueFrom.value, revenueTo: revenueTo.value }) }
@@ -144,6 +148,9 @@ async function exportToExcel() {
         <label>From <input v-model="revenueFrom" type="month" @change="applyFilters()" /></label>
         <label>To <input v-model="revenueTo" type="month" @change="applyFilters()" /></label>
         <span>PCNs are ranked by the sum of affected-part NR in this period.</span>
+      </div>
+      <div v-if="['MINOR_READY_UPLOAD', 'MAJOR_BLOCKED_RA'].includes(executiveState)" class="queue-revenue-chart">
+        <ExecutiveRevenuePie :title="revenueChartTitle" :items="revenueChartItems" />
       </div>
       <div v-if="data?.items.length" class="table-wrap"><table class="records-table" :class="{ 'major-revenue-priority-table': ['MAJOR_BLOCKED_RA', 'MAJOR_READY_UPLOAD'].includes(executiveState) }">
         <thead><tr>

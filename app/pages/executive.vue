@@ -16,13 +16,6 @@ function ownerClass(owner: string) {
     <div v-else-if="error" class="alert error">Executive summary could not be loaded. <button @click="refresh()">Try again</button></div>
     <template v-else>
       <section class="executive-total"><span>PCNs classified</span><strong>{{ data.total.toLocaleString() }}</strong><small v-if="data.other">{{ data.other }} unclassified</small></section>
-      <section class="executive-chart-section">
-        <div class="section-title"><div><p class="eyebrow">PCN share by net revenue</p><h2>Revenue-priority queues</h2><small>NR period {{ data.revenuePeriod.from }} to {{ data.revenuePeriod.to }} · PCNs with $0 NR are excluded</small></div></div>
-        <div class="executive-chart-grid">
-          <ExecutiveRevenuePie title="Minor ready for upload" :items="data.revenueBreakdowns.MINOR_READY_UPLOAD" />
-          <ExecutiveRevenuePie title="Major blocked by RA" :items="data.revenueBreakdowns.MAJOR_BLOCKED_RA" />
-        </div>
-      </section>
       <section class="executive-sheet"><table><thead><tr><th>Owner</th><th>Status</th><th>Definition</th><th>PCNs</th><th>Action</th></tr></thead><tbody>
         <tr v-for="queue in data.queues" :key="queue.key" tabindex="0" class="executive-row" @click="openQueue(queue.key)" @keydown.enter="openQueue(queue.key)">
           <td class="owner-cell" :class="ownerClass(queue.owner)">{{ queue.owner }}</td><td class="executive-fill" :class="`executive-${queue.tone}`"><strong>{{ queue.status }}</strong></td><td>{{ queue.definition }}</td><td class="executive-count" :class="`executive-${queue.tone}`">{{ queue.value.toLocaleString() }}</td><td><strong>{{ queue.action }}</strong><Icon name="lucide:arrow-right" /></td>
