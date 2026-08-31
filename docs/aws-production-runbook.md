@@ -7,7 +7,7 @@ The production deployment was created on 2026-09-01 in AWS account
 
 | Item | Value |
 | --- | --- |
-| Application URL | `https://16-76-33-149.sslip.io` |
+| Application URL | `https://pcn.duckdns.org` |
 | AWS Region | `ap-northeast-1` (Tokyo) |
 | Lightsail instance | `pcn-workbench-prod` |
 | Lightsail plan | `micro_3_0`: 2 vCPU, 1 GB RAM, 40 GB SSD, US$7/month |
@@ -22,9 +22,8 @@ The production deployment was created on 2026-09-01 in AWS account
 | Halt function | `pcn-budget-emergency-halt` in `us-east-1` |
 | Halt topic | `arn:aws:sns:us-east-1:387367330632:pcn-total-cost-budget-alert` |
 
-The current URL uses `sslip.io` because no owned production domain was supplied.
-It has a publicly trusted certificate, but an owned subdomain should replace it
-for long-term production use.
+The application uses the DuckDNS hostname `pcn.duckdns.org`, which points to the
+Lightsail static IP and has a publicly trusted Caddy-managed certificate.
 
 The instance runs Ubuntu 24.04, Node.js 22, Caddy, SQLite, and AWS CLI v2. The
 application listens only on `127.0.0.1:3000`. Caddy exposes ports 80 and 443.
@@ -51,8 +50,8 @@ history:
 sudo awk -F= '/^PCN_(ADMIN|OPERATOR)_(USERNAME|PASSWORD)=/{print}' /etc/pcn/pcn.env
 ```
 
-The initial usernames are `pcn-admin` and `pcn-operator`. The copied development
-accounts `admin` and `csc` are disabled. The server-side backup access key is in
+The active usernames are `admin` and `csc`. The generated interim accounts
+`pcn-admin` and `pcn-operator` are disabled. The server-side backup access key is in
 `/root/.aws/credentials`, owned by root with mode `0600`; it can access only the
 backup bucket's `database/` prefix.
 
@@ -161,11 +160,10 @@ aws lambda update-function-code --region us-east-1 \
   --zip-file fileb:///tmp/pcn-budget-emergency-halt.zip
 ```
 
-## Replace the temporary hostname
+## Configure the hostname
 
-Create an `A` record for an owned subdomain pointing to `16.76.33.149`. Then edit
-`/etc/caddy/Caddyfile`, replace `16-76-33-149.sslip.io` with the owned hostname,
-validate, and reload:
+The DuckDNS `A` record points `pcn.duckdns.org` to `16.76.33.149`. The server
+`/etc/caddy/Caddyfile` uses this hostname; after changes, validate and reload:
 
 ```bash
 sudo caddy validate --config /etc/caddy/Caddyfile
@@ -173,7 +171,7 @@ sudo systemctl reload caddy.service
 ```
 
 Keep ports 80 and 443 open while Caddy obtains and renews certificates. Verify
-the new hostname before removing the old site address from Caddy.
+the hostname over HTTPS after Caddy obtains or renews its certificate.
 
 ## Cost budget and emergency halt
 
