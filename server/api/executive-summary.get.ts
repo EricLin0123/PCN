@@ -7,7 +7,7 @@ const definitions = [
   { key: 'MINOR_PENDING_APPROVAL', owner: 'Delta', status: 'Minor pending approval', definition: 'All parts uploaded; Delta PROCESSING; expected TI risk MINOR', action: 'Follow up with Delta', tone: 'yellow' },
   { key: 'MAJOR_PENDING_APPROVAL', owner: 'Delta', status: 'Major pending approval', definition: 'All parts uploaded; Delta PROCESSING; expected TI risk MAJOR', action: 'Follow up with Delta', tone: 'yellow' },
   { key: 'REJECTED', owner: 'TI / Delta', status: 'Rejected – resolution required', definition: 'At least one suffix has REJECT as its latest Delta attempt', action: 'Investigate and correct', tone: 'red' },
-  { key: 'COMPLETED', owner: 'Closed', status: 'Completed', definition: 'All parts uploaded; the current Delta suffix status is COMPLETE', action: 'No action', tone: 'green' },
+  { key: 'COMPLETED', owner: 'Closed', status: 'Completed', definition: 'Latest Delta status is COMPLETE; MINOR PCNs do not require full upload coverage', action: 'No action', tone: 'green' },
   { key: 'EOL_EXCLUDED', owner: 'Closed', status: 'EOL / Excluded', definition: 'Expected TI risk is EOL', action: 'No action', tone: 'black' },
 ]
 

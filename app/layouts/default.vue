@@ -5,6 +5,7 @@ const links = [
   { to: '/', label: 'Overview', icon: 'lucide:layout-dashboard' },
   { to: '/pcns', label: 'PCN records', icon: 'lucide:files' },
   { to: '/parts', label: 'Parts', icon: 'lucide:cpu' },
+  { to: '/organization', label: 'Organization', icon: 'lucide:network' },
   { to: '/pcns/new', label: 'New PCN', icon: 'lucide:circle-plus' },
 ]
 const isActive = (to: string) => to === '/' ? route.path === '/' : route.path === to || (to === '/pcns' && /^\/pcns\/\d/.test(route.path))

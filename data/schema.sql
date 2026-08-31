@@ -360,6 +360,8 @@ SELECT
   CASE
     WHEN current_delta.has_reject = 1 THEN 'REJECTED'
     WHEN ops.expected_risk = 'EOL' THEN 'EOL_EXCLUDED'
+    WHEN current_delta.delta_status = 'COMPLETE'
+      AND ops.expected_risk = 'MINOR' THEN 'COMPLETED'
     WHEN ops.upload_state <> 'ALL_UPLOADED' AND ops.expected_risk = 'MINOR' THEN 'MINOR_READY_UPLOAD'
     WHEN ops.upload_state <> 'ALL_UPLOADED' AND ops.expected_risk = 'MAJOR' AND rac.ra_state <> 'FULL_RA' THEN 'MAJOR_BLOCKED_RA'
     WHEN ops.upload_state <> 'ALL_UPLOADED' AND ops.expected_risk = 'MAJOR' AND rac.ra_state = 'FULL_RA' THEN 'MAJOR_READY_UPLOAD'
