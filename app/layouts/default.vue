@@ -27,6 +27,10 @@ const isActive = (to: string) => to === '/' ? route.path === '/' : route.path ==
         <span class="status-dot" />
         <div><strong>SQLite connected</strong><small>Database is the source of truth</small></div>
       </div>
+      <div class="owner-tag">
+        <strong>Eric Lin</strong>
+        <a href="mailto:e-lin1@ti.com">e-lin1@ti.com</a>
+      </div>
     </aside>
     <main class="main"><slot /></main>
   </div>

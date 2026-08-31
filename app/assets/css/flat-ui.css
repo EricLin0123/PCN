@@ -60,6 +60,33 @@ body {
   background: #111c29;
 }
 
+.owner-tag {
+  padding: 12px 18px 14px;
+  color: #fff;
+  background: #0d1723;
+  border-top: 1px solid #344355;
+}
+
+.owner-tag strong,
+.owner-tag a {
+  display: block;
+}
+
+.owner-tag strong {
+  font-size: 12px;
+}
+
+.owner-tag a {
+  margin-top: 3px;
+  color: #9fc5e5;
+  font-size: 11px;
+}
+
+.owner-tag a:hover {
+  color: #fff;
+  text-decoration: underline;
+}
+
 .page {
   max-width: none;
   padding: 0 0 40px;
@@ -782,6 +809,12 @@ td.fill-cell .coverage-count {
   font-weight: 800;
 }
 
+@media (max-width: 1050px) {
+  .owner-tag {
+    display: none;
+  }
+}
+
 @media (max-width: 760px) {
   .page-header,
   .detail-header {
@@ -796,6 +829,7 @@ td.fill-cell .coverage-count {
     border-right: 1px solid #2b394a;
     border-bottom: 0;
   }
+
 }
 
 /* Larger operational typography. */
