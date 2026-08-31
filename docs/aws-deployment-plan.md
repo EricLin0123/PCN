@@ -1,169 +1,248 @@
 # AWS Deployment Plan for PCN Workbench
 
-## Summary
+## Recommended Architecture
 
-Deploy the application on one Amazon Lightsail Ubuntu instance in Tokyo with:
+Run the application on one Amazon Lightsail Ubuntu instance in Tokyo:
 
-- A Micro instance with 2 vCPUs, 1 GB RAM, 40 GB SSD, and a public IPv4 address for approximately US$7 per month.
-- Caddy for automatic HTTPS, HTTP-to-HTTPS redirects, and separate basic-auth credentials for each user.
-- Nuxt/Nitro running as a `systemd` service on `127.0.0.1:3000`.
-- SQLite stored outside application releases at `/var/lib/pcn/pcn.db`.
-- Daily Lightsail snapshots plus daily SQLite backups to a private S3 bucket.
-- Manual deployment over SSH with a brief maintenance window.
+- Lightsail Micro: 2 vCPUs, 1 GB RAM, 40 GB SSD, approximately US$7 per month.
+- Caddy for HTTPS, certificate renewal, HTTP-to-HTTPS redirection, and reverse proxying.
+- The application's built-in admin/operator login, configured with environment variables.
+- Nuxt/Nitro managed by `systemd` and listening only on `127.0.0.1:3000`.
+- SQLite stored persistently at `/var/lib/pcn/pcn.db`, outside application releases.
+- Seven daily Lightsail snapshots and one daily SQLite backup uploaded to private S3.
+- Manual deployment over SSH using a locally built release.
 
-This is the simplest fit because the application writes directly to SQLite. S3 static hosting, Lambda, App Runner, and typical autoscaling container deployments do not provide the persistent local filesystem this application currently requires. AWS documents App Runner storage as ephemeral and unsuitable for stateful applications: [Developing application code for App Runner](https://docs.aws.amazon.com/apprunner/latest/dg/develop.html).
+This is intentionally a single-server deployment. It is inexpensive and easy to understand, but brief downtime is expected during deployments and recovery. Do not use S3 static hosting, Lambda, App Runner, or multiple application instances while SQLite remains the runtime database.
 
-The expected recurring cost is approximately US$7-9 per month, excluding the existing domain:
+Expected recurring cost is approximately US$7-9 per month, excluding the existing domain. The current database is about 15 MB, so S3 database-backup cost is negligible. Verify current pricing before purchase using [Lightsail instance bundles](https://docs.aws.amazon.com/lightsail/latest/userguide/amazon-lightsail-bundles.html) and [Lightsail snapshot pricing](https://docs.aws.amazon.com/lightsail/latest/userguide/amazon-lightsail-frequently-asked-questions-faq-billing-and-account-management.html).
 
-- US$7 per month for the Lightsail Micro instance.
-- Incremental Lightsail snapshot storage at US$0.05 per GB-month.
-- Negligible S3 storage and request charges for the current database, which is approximately 2.1 MB.
-- No charge for a static IP while it remains attached to the instance.
-
-See [Lightsail instance bundles](https://docs.aws.amazon.com/lightsail/latest/userguide/amazon-lightsail-bundles.html) and [Lightsail billing and snapshot pricing](https://docs.aws.amazon.com/lightsail/latest/userguide/amazon-lightsail-frequently-asked-questions-faq-billing-and-account-management.html) for current AWS pricing.
-
-## AWS Infrastructure
+## 1. Create the AWS Resources
 
 1. Create an Ubuntu 24.04 Lightsail instance in `ap-northeast-1` (Tokyo) using the 1 GB Micro plan.
-2. Create and attach a static IPv4 address. The static address prevents DNS from changing after an instance restart.
+2. Attach a static IPv4 address.
 3. Configure the Lightsail firewall:
-   - Allow TCP ports 80 and 443 from anywhere.
-   - Allow TCP port 22 only from the administrator's current public IP address.
-   - Do not expose the application's port 3000.
-4. Point an existing subdomain, such as `pcn.example.com`, to the static IPv4 address using a DNS `A` record.
-5. Enable automatic daily Lightsail snapshots. Lightsail keeps the seven most recent automatic snapshots; see [Manual and automatic snapshots](https://docs.aws.amazon.com/lightsail/latest/userguide/amazon-lightsail-faq-snapshots.html).
-6. Create a private S3 backup bucket in Tokyo with:
-   - Block Public Access enabled.
-   - Default server-side encryption enabled.
-   - Bucket versioning enabled.
-   - A lifecycle policy retaining daily backups for 30 days and monthly backups for 12 months.
-7. Create a dedicated IAM principal whose policy permits listing the backup bucket and reading or writing only the application's backup prefix. Do not grant general S3 or administrator access.
-8. Create an AWS budget alert for unexpected monthly charges.
+   - Allow TCP 80 and 443 from anywhere.
+   - Allow TCP 22 only from the administrator's current public IP address.
+   - Do not expose port 3000.
+4. Point an existing subdomain, such as `pcn.example.com`, to the static IP with a DNS `A` record.
+5. Enable automatic daily Lightsail snapshots. Lightsail retains the seven most recent automatic snapshots.
+6. Create one private S3 bucket in Tokyo for SQLite backups:
+   - Keep Block Public Access enabled.
+   - Keep the default server-side encryption enabled.
+   - Do not enable bucket versioning for this simple deployment.
+   - Add a lifecycle rule that deletes backups after 90 days.
+7. Create one IAM access key restricted to listing that bucket and reading/writing only the `database/` prefix. Do not grant administrator or general S3 access.
+8. Create an AWS monthly budget alert.
 
-## Server Setup
+All AWS resources can be created with AWS CLI, but using the Lightsail console for the one-time server creation is acceptable and easier to review.
 
-1. Install Node.js 22, Caddy, the SQLite CLI, AWS CLI, and required system packages.
-2. Create a dedicated unprivileged Linux account named `pcn`.
-3. Create the following directories:
-   - `/opt/pcn/releases/<timestamp>` for immutable application releases.
-   - `/opt/pcn/current` as a symlink to the active release.
-   - `/var/lib/pcn/pcn.db` as the persistent production database.
-   - `/var/backups/pcn` for temporary database backups.
-4. Give the `pcn` account access only to its release and data directories. Keep backup scripts and AWS credentials restricted to `root`.
-5. Configure a `systemd` service with:
-   - Working directory: `/opt/pcn/current`.
-   - Command: `node .output/server/index.mjs`.
-   - `NODE_ENV=production`.
-   - `HOST=127.0.0.1`.
-   - `PORT=3000`.
-   - `PCN_DB_PATH=/var/lib/pcn/pcn.db`.
-   - Automatic restart after unexpected failures.
-6. Configure Caddy for the selected domain:
-   - Generate a password hash for each user with `caddy hash-password`.
-   - Protect the entire site, including `/api/*`, with `basic_auth`.
-   - Reverse proxy authenticated requests to `127.0.0.1:3000`.
-   - Allow Caddy to obtain and renew the TLS certificate and redirect HTTP to HTTPS automatically.
+## 2. Prepare the Server
 
-Caddy configuration references: [basic authentication](https://caddyserver.com/docs/caddyfile/directives/basic_auth), [reverse proxy](https://caddyserver.com/docs/caddyfile/directives/reverse_proxy), and [automatic HTTPS](https://caddyserver.com/docs/caddyfile/options).
+SSH to the instance and install Node.js 22 LTS, Caddy, SQLite CLI, and AWS CLI v2.
 
-## Initial Data Migration
+Create an unprivileged service account and these directories:
 
-Do not copy `data/pcn.db` while a local application process may be writing to it. SQLite WAL changes might otherwise be omitted.
+```text
+/opt/pcn/releases/<timestamp>  immutable application releases
+/opt/pcn/current               symlink to the active release
+/var/lib/pcn/pcn.db            live SQLite database
+/var/backups/pcn               temporary backup directory
+/etc/pcn/pcn.env               production environment and login credentials
+```
 
-1. Stop the local application or use the SQLite CLI's online `.backup` command to create a consistent database snapshot.
-2. Run `PRAGMA integrity_check` against the snapshot and require the result to be `ok`.
-3. Record representative row counts for important tables such as `pcn`, `ti_part`, `delta_form`, and `risk_assessment`.
-4. Transfer the validated snapshot to the server as `/var/lib/pcn/pcn.db`.
-5. Set ownership and permissions so only the `pcn` service account can read or write the database.
-6. Start the service and compare the server's integrity result and representative row counts with the local snapshot.
+The `pcn` account owns `/opt/pcn` and `/var/lib/pcn`. The environment file is owned by `root`, belongs to the `pcn` group, and uses mode `0640`. AWS credentials and backup scripts remain readable only by `root`.
 
-The live database must never be placed inside `/opt/pcn/releases` or replaced as part of an application deployment.
+## 3. Configure Authentication
 
-## Manual Deployment Procedure
+Use the application's built-in login. Do not configure Caddy basic authentication.
 
-For every release:
+Create `/etc/pcn/pcn.env` with:
 
-1. Preserve current local changes and review `git status --short`.
-2. Use Node.js 22 and run:
-   - `npm ci`.
-   - `npm run typecheck`.
-   - `npm run build`.
-   - `git diff --check`.
-3. Create a release artifact containing `.output` and `data/schema.sql`. Do not include `data/pcn.db`, source workbooks, temporary databases, or Excel lock files.
-4. Before changing the server release, create and validate a timestamped SQLite backup.
-5. Upload the artifact to a new `/opt/pcn/releases/<timestamp>` directory.
-6. Stop the `pcn` service, switch `/opt/pcn/current` to the new release, and start the service.
-7. Verify the HTTPS endpoint, authentication, dashboard, and a representative API request.
-8. Keep at least the previous release for rollback.
+```dotenv
+NODE_ENV=production
+HOST=127.0.0.1
+PORT=3000
+PCN_DB_PATH=/var/lib/pcn/pcn.db
+PCN_AUTH_ENABLED=true
 
-To roll back application code, stop the service, switch `/opt/pcn/current` to the preceding release, and restart it. Do not automatically roll back the database: restore it only when a database change is known to be incompatible or corrupt.
+PCN_ADMIN_USERNAME=choose-a-production-admin-name
+PCN_ADMIN_PASSWORD=choose-a-long-unique-admin-password
+PCN_OPERATOR_USERNAME=choose-a-production-operator-name
+PCN_OPERATOR_PASSWORD=choose-a-long-unique-operator-password
+```
 
-## Database Backups
+Credential rules:
 
-1. Install a root-owned daily `systemd` timer or cron job.
-2. The backup task must:
-   - Create a consistent timestamped database using SQLite `.backup` while the application is running.
-   - Run `PRAGMA integrity_check` against the backup.
-   - Stop immediately without uploading if validation fails.
-   - Compress the valid backup.
-   - Upload it to the private S3 backup prefix.
-   - Delete the temporary local copy only after the upload succeeds.
-3. Store the restricted AWS credentials with root-only permissions.
-4. Monitor backup exit status and periodically confirm that new objects appear in S3.
-5. Retain the seven rolling Lightsail snapshots as full-server recovery points in addition to database-specific S3 backups.
+- Use unique production usernames and long, randomly generated passwords.
+- Do not reuse development credentials.
+- Do not place the production environment file in the repository, release archive, shell history, or S3 backup bucket.
+- Give the admin credential only to administrators and the operator credential only to the operating team.
 
-## Interfaces and Security
+The current application creates an account from these variables only when its username does not already exist. It does not update an existing account's password. Therefore:
 
-- No application API, database schema, or business-logic changes are required for this deployment.
-- `PCN_DB_PATH` is the production persistence boundary. Releases may contain `data/schema.sql` but never the production database.
-- Every UI and API request requires HTTPS basic authentication.
-- Each team member receives a separate username and password.
-- Basic authentication provides gateway access only. It does not provide application roles, password recovery, or user-level change auditing.
-- SQLite and S3 remain private. Only Caddy accepts public web traffic.
-- Remove a departing user by deleting their Caddy credential and reloading Caddy.
-- Keep the OS, Node.js, and Caddy patched on a regular maintenance schedule.
+1. Use production usernames that do not already exist in the copied database.
+2. Before the first production start, disable existing development accounts on the deployment database copy:
 
-## Launch Validation
+   ```sql
+   UPDATE app_user SET enabled = 0;
+   DELETE FROM auth_session;
+   ```
 
-Before declaring the deployment complete:
+3. Start the application with `/etc/pcn/pcn.env`; it will create the new admin and operator accounts.
+4. Confirm both accounts can sign in and that old accounts cannot sign in.
 
-1. Confirm an unauthenticated request returns HTTP `401`.
-2. Confirm every intended user can authenticate over HTTPS.
-3. Confirm HTTP redirects to HTTPS and the certificate is valid for the selected domain.
-4. Verify dashboard loading, PCN filtering, Excel export, PCN editing, RA editing, and Delta-form editing.
-5. Run `PRAGMA integrity_check` against the deployed database.
-6. Confirm expected representative table counts.
-7. Restart the application service and confirm edits remain present.
-8. Reboot the instance and confirm the service starts automatically and retains its data.
-9. Trigger an S3 backup manually and confirm it completes successfully.
-10. Download a backup to a separate temporary location, validate it, and start the application against that restored copy without touching the live database.
+For this simple deployment, password rotation means choosing a new username and password in `/etc/pcn/pcn.env`, restarting once to create that account, confirming login, and then disabling the previous account in SQLite. Merely changing the password variable for an existing username does not rotate its password.
 
-## Recovery Procedures
+## 4. Configure the Application Service
 
-For accidental data loss or database corruption:
+Create a `systemd` service with:
 
-1. Stop the application.
+- User and group: `pcn`.
+- Working directory: `/opt/pcn/current`.
+- Environment file: `/etc/pcn/pcn.env`.
+- Command: `node .output/server/index.mjs`.
+- Restart after unexpected failure.
+- Start after networking is available.
+
+Enable the service so it starts automatically after a reboot.
+
+## 5. Configure Caddy
+
+Caddy performs only TLS termination and reverse proxying:
+
+```caddyfile
+pcn.example.com {
+  encode zstd gzip
+  reverse_proxy 127.0.0.1:3000
+  log
+}
+```
+
+Replace the example domain, validate the configuration, and reload Caddy. Caddy will request and renew the HTTPS certificate automatically after DNS points to the instance and ports 80 and 443 are open.
+
+Do not expose the Nitro port or disable application authentication. Review Caddy access logs if repeated login failures or unusual traffic are suspected.
+
+## 6. Prepare and Transfer the Initial Database
+
+Never copy `data/pcn.db` while another process may be writing to it. Create a consistent SQLite backup:
+
+```bash
+sqlite3 data/pcn.db ".backup '/tmp/pcn-deploy.db'"
+sqlite3 /tmp/pcn-deploy.db 'PRAGMA integrity_check;'
+sqlite3 /tmp/pcn-deploy.db 'PRAGMA foreign_key_check;'
+```
+
+The integrity result must be `ok`, and the foreign-key check must return no rows.
+
+On this deployment copy only, disable development accounts and clear sessions:
+
+```bash
+sqlite3 /tmp/pcn-deploy.db 'UPDATE app_user SET enabled = 0; DELETE FROM auth_session;'
+```
+
+Transfer the copy to `/var/lib/pcn/pcn.db`, set it to owner/group `pcn`, and restrict its permissions. Never transfer or replace the live database as part of an application release.
+
+Record representative row counts before and after transfer for `pcn`, `ti_part`, `delta_form`, `delta_ti_part_mapping`, `risk_assessment`, `material_month_revenue`, `ti_part_organization`, and `pcn_csc_upload`.
+
+## 7. Build and Deploy a Release
+
+Build on the development computer with Node.js 22:
+
+```bash
+git status --short
+npm ci
+npm run typecheck
+npm run build
+git diff --check
+```
+
+Create a release archive containing only:
+
+```text
+.output/
+data/schema.sql
+```
+
+Do not include `data/pcn.db`, `.env`, source workbooks, temporary databases, logs, or Excel lock files.
+
+For every deployment:
+
+1. Create and validate a database backup.
+2. Upload the release into a new `/opt/pcn/releases/<timestamp>` directory.
+3. Test the new release against a copy of production, not the live database. Confirm startup, `PRAGMA integrity_check`, and `PRAGMA foreign_key_check`.
+4. Stop the `pcn` service.
+5. Change `/opt/pcn/current` to the new release.
+6. Start the service.
+7. Test HTTPS, login, the dashboard, and a representative API request.
+8. Retain the previous release for rollback.
+
+To roll back code, stop the service, point `/opt/pcn/current` to the previous release, and restart it. Do not roll back the database unless the new release changed it incompatibly and the validated pre-deployment backup must be restored.
+
+## 8. Configure Daily Database Backups
+
+Use one root-owned daily `systemd` timer. The backup command must:
+
+1. Create a timestamped SQLite `.backup` while the application is running.
+2. Run `PRAGMA integrity_check` and `PRAGMA foreign_key_check` on the backup.
+3. Compress the valid backup.
+4. Upload it to `s3://<backup-bucket>/database/`.
+5. Delete the temporary local copy only after a successful upload.
+6. Return a failure status if any step fails so it is visible in the system journal.
+
+Once a month, manually download the newest S3 backup, validate it, and start the application against that restored copy. A backup is not considered reliable until restoration has been tested.
+
+Lightsail snapshots provide full-server recovery, while S3 SQLite backups provide precise database recovery. Automatic Lightsail snapshots are deleted with the source instance, so retain at least one manual snapshot before destructive instance work.
+
+## 9. Launch Checklist
+
+Before declaring production ready:
+
+- An unauthenticated API request returns `401`.
+- Admin and operator credentials both work over HTTPS.
+- Disabled development accounts cannot sign in.
+- The operator cannot perform admin-only CSC confirmation or SBE champion changes.
+- The admin can perform those actions.
+- Login, logout, and the 12-hour session expiry work.
+- Dashboard, executive, PCN, Parts, SBE, and organization pages load.
+- Filtering, charts, and Excel export work.
+- PCN, Delta-form, RA, and CSC edits persist after service restart.
+- `PRAGMA integrity_check` returns `ok` and `PRAGMA foreign_key_check` returns no rows.
+- Representative row counts match the source database.
+- Caddy redirects HTTP to HTTPS and presents a valid certificate.
+- Port 3000 is not reachable publicly.
+- Rebooting the instance starts Caddy and the application automatically.
+- A database backup is present in S3 and has been restored successfully to a temporary location.
+
+## 10. Recovery
+
+For application-release failure:
+
+1. Stop the service.
+2. Switch `/opt/pcn/current` to the previous release.
+3. Start the service and run the launch smoke checks.
+
+For database loss or corruption:
+
+1. Stop the service.
 2. Preserve the damaged database for investigation.
-3. Download the newest valid S3 database backup to a temporary location.
-4. Run integrity and representative row-count checks.
-5. Replace `/var/lib/pcn/pcn.db` only after validation.
-6. Restore ownership and permissions, start the service, and verify the application.
+3. Download the newest valid S3 backup to a temporary path.
+4. Run both SQLite integrity checks and compare representative row counts.
+5. Replace `/var/lib/pcn/pcn.db`, restore ownership and permissions, and start the service.
+6. Delete restored `auth_session` rows if the recovery relates to a security incident.
 
 For complete instance loss:
 
-1. Create a replacement Lightsail instance from the newest usable instance snapshot.
-2. Reattach the existing static IP.
-3. Confirm DNS, firewall, Caddy, and the application service.
-4. If the latest S3 database backup is newer than the snapshot database, validate and restore the S3 copy.
-5. Complete the full launch-validation checklist.
+1. Create a replacement instance from the newest usable Lightsail snapshot.
+2. Reattach the static IP.
+3. Restore a newer validated S3 database backup if necessary.
+4. Confirm firewall, DNS, environment permissions, Caddy, authentication, backups, and application behavior.
 
-## Assumptions and Accepted Tradeoffs
+## Assumptions
 
-- The app serves a small internal team with light concurrent usage.
-- Brief downtime during deployments and recovery is acceptable.
+- The application is used by a small internal team with light concurrent traffic.
+- One shared admin credential and one shared operator credential are acceptable.
+- Brief downtime during deployment or recovery is acceptable.
+- The domain is already owned and its DNS can be changed.
 - Tokyo is the preferred AWS region for users in Taiwan.
-- The organization controls DNS for an existing domain.
-- Per-user basic authentication is acceptable for the first release.
-- Cognito or corporate SSO, role-based permissions, and user-level audit trails are deferred.
-- A single Lightsail instance is intentionally not highly available. If high availability becomes necessary, migrate away from local SQLite to a managed network database before adding multiple application instances.
-- Existing uncommitted application and database changes must be preserved and included only after validation.
+- High availability, Cognito, SSO, individual user administration, password recovery, and detailed user-level auditing are intentionally out of scope.
+- If usage, security, or availability requirements grow, revisit authentication and migrate away from local SQLite before adding multiple application instances.
