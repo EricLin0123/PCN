@@ -75,6 +75,15 @@ export default defineEventHandler((event) => {
   const items = all(`SELECT p.id, p.pcn_number_base, p.notification_date, p.title,
       ct.name AS change_type, ops.expected_risk AS risk,
       (SELECT count(*) FROM pcn_ti_part pp WHERE pp.pcn_id = p.id) AS part_count,
+      (SELECT group_concat(owners.sbe1_name, '; ')
+       FROM (
+         SELECT DISTINCT sbe1.name AS sbe1_name
+         FROM pcn_ti_part owner_parts
+         JOIN ti_part_organization owner_mapping ON owner_mapping.ti_part_id = owner_parts.ti_part_id
+         JOIN sbe1 ON sbe1.id = owner_mapping.sbe1_id
+         WHERE owner_parts.pcn_id = p.id
+         ORDER BY sbe1.name
+       ) owners) AS sbe1_names,
       (SELECT group_concat(affected.display_part_number, '; ')
        FROM (
          SELECT tp2.display_part_number

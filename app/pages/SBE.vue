@@ -85,7 +85,8 @@ const filteredOrganizations = computed(() => {
 
         <div class="sbe1-branches">
           <article v-for="group in sbe.sbe1" :key="group.id" class="sbe1-branch">
-            <header class="sbe1-node">
+            <div class="sbe1-content">
+              <header class="sbe1-node">
               <div><span>SBE-1</span><strong>{{ group.name }}</strong>
                 <form v-if="isAdmin" class="champion-email-editor" @submit.prevent="saveChampion(group)">
                   <input v-model="group.championEmail" type="email" aria-label="Champion email" placeholder="Champion not assigned" />
@@ -93,17 +94,22 @@ const filteredOrganizations = computed(() => {
                 </form>
                 <strong v-else-if="group.championEmail" class="champion-email"><Icon name="lucide:mail" /> {{ group.championEmail }}</strong>
                 <span v-if="!group.championEmail" class="champion-missing"><Icon name="lucide:user-round-x" /> Champion not assigned</span>
+                <small class="sbe1-total">{{ group.partCount.toLocaleString() }} part{{ group.partCount === 1 ? '' : 's' }}</small>
               </div>
-              <small>{{ group.partCount.toLocaleString() }} part{{ group.partCount === 1 ? '' : 's' }}</small>
-            </header>
+              </header>
 
-            <div v-if="group.sbe2.length" class="sbe2-list">
+              <div v-if="group.sbe2.length" class="sbe2-list">
               <div v-for="team in group.sbe2" :key="team.id" class="sbe2-node">
                 <span>SBE-2</span><strong>{{ team.name }}</strong><small>{{ team.partCount.toLocaleString() }} part{{
                   team.partCount === 1 ? '' : 's' }}</small>
               </div>
+              </div>
+              <div v-else class="sbe2-empty">No SBE-2 mapping</div>
             </div>
-            <div v-else class="sbe2-empty">No SBE-2 mapping</div>
+            <div class="sbe1-summary">
+              <div><small>Pending RA parts</small><strong>{{ group.pendingRaPartCount.toLocaleString() }}</strong></div>
+              <div><small>Pending RA PCNs</small><strong>{{ group.pendingRaPcnCount.toLocaleString() }}</strong></div>
+            </div>
           </article>
         </div>
       </article>

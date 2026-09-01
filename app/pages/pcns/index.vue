@@ -37,10 +37,11 @@ function activeFilters() {
   return { ...(search.value && { search: search.value }), ...(changeType.value && { changeType: changeType.value }), ...(risk.value && { risk: risk.value }), ...(statusFilter.value && { status: statusFilter.value }), ...(uploadState.value && { uploadState: uploadState.value }), ...(cscStatus.value && { cscStatus: cscStatus.value }), ...(riskAlignment.value && { riskAlignment: riskAlignment.value }), ...(raState.value && { raState: raState.value }), ...(executiveState.value && { executiveState: executiveState.value }), revenueFrom: revenueFrom.value, revenueTo: revenueTo.value }
 }
 
-type ColumnKey = 'record' | 'changeType' | 'risk' | 'upload' | 'csc' | 'delta' | 'nr' | 'alignment'
+type ColumnKey = 'record' | 'sbe1' | 'changeType' | 'risk' | 'upload' | 'csc' | 'delta' | 'nr' | 'alignment'
 interface TableColumn { key: ColumnKey, label: string, width: number, minWidth: number }
 const defaultColumns: TableColumn[] = [
   { key: 'record', label: 'PCN / title / part / RA', width: 400, minWidth: 280 },
+  { key: 'sbe1', label: 'SBE-1', width: 180, minWidth: 130 },
   { key: 'changeType', label: 'Change type', width: 210, minWidth: 140 },
   { key: 'risk', label: 'Expected risk level', width: 155, minWidth: 120 },
   { key: 'upload', label: 'Upload state', width: 190, minWidth: 145 },
@@ -176,6 +177,7 @@ async function exportToExcel() {
     for (const pcn of sortedPcns.value) {
       const row = sheet.addRow({
         record: `${pcn.pcn_number_base}\n${pcn.title}\nParts (${pcn.part_count}): ${pcn.ti_affected_parts || '—'}\nRAs: ${pcn.ra_count}`,
+        sbe1: pcn.sbe1_names || '—',
         changeType: pcn.change_type || 'Unspecified',
         risk: displayState(pcn.risk),
         upload: `${displayState(pcn.upload_state)} (${pcn.uploaded_parts}/${pcn.delta_relevant_parts})`,
@@ -254,6 +256,7 @@ async function exportToExcel() {
           <td v-for="column in columns" :key="column.key" :class="cellClass(pcn, column.key)">
             <NuxtLink v-if="column.key === 'record'" :to="{ path: `/pcns/${pcn.id}`, query: { revenueFrom, revenueTo } }" class="record-title"><span class="mono-link">{{ pcn.pcn_number_base }}</span><small>{{ pcn.title }}</small><small class="record-data-line" :title="pcn.ti_affected_parts || ''"><strong>Parts {{ pcn.part_count }}</strong> · {{ pcn.ti_affected_parts || '—' }}</small><small><strong>RA {{ pcn.ra_count }}</strong><template v-if="pcn.ra_state !== 'NA'"> · {{ displayState(pcn.ra_state) }} {{ pcn.ra_covered_parts }}/{{ pcn.total_parts }}</template></small></NuxtLink>
             <template v-else-if="column.key === 'changeType'">{{ pcn.change_type || 'Unspecified' }}</template>
+            <span v-else-if="column.key === 'sbe1'" class="sbe1-names">{{ pcn.sbe1_names || '—' }}</span>
             <RiskBadge v-else-if="column.key === 'risk'" :risk="pcn.risk" />
             <template v-else-if="column.key === 'upload'"><StateBadge :state="pcn.upload_state" /><small class="coverage-count">{{ pcn.uploaded_parts }}/{{ pcn.delta_relevant_parts }} Delta parts</small></template>
             <template v-else-if="column.key === 'csc'"><StateBadge :state="pcn.csc_status" /><small v-if="pcn.csc_form_no" class="coverage-count">{{ pcn.csc_form_no }}</small></template>

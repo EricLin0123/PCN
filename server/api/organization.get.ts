@@ -9,6 +9,8 @@ interface OrganizationRow {
   sbe2_id: number
   sbe2_name: string
   part_count: number
+  pending_ra_part_count: number
+  pending_ra_pcn_count: number
 }
 
 interface Sbe2Node {
@@ -22,6 +24,8 @@ interface Sbe1Node {
   name: string
   championEmail: string | null
   partCount: number
+  pendingRaPartCount: number
+  pendingRaPcnCount: number
   sbe2: Sbe2Node[]
 }
 
@@ -41,11 +45,21 @@ export default defineEventHandler(() => {
       sbe1.champion_email,
       sbe2.id AS sbe2_id,
       sbe2.name AS sbe2_name,
-      count(DISTINCT organization.ti_part_id) AS part_count
+      count(DISTINCT organization.ti_part_id) AS part_count,
+      count(DISTINCT CASE WHEN executive.executive_state = 'MAJOR_BLOCKED_RA'
+        AND NOT EXISTS (
+          SELECT 1 FROM risk_assessment_ti_part covered
+          JOIN risk_assessment assessment ON assessment.id = covered.risk_assessment_id
+          WHERE assessment.pcn_id = pcn.id AND covered.ti_part_id = organization.ti_part_id
+        ) THEN organization.ti_part_id END) AS pending_ra_part_count,
+      0 AS pending_ra_pcn_count
     FROM ti_part_organization organization
     JOIN sbe ON sbe.id = organization.sbe_id
     JOIN sbe1 ON sbe1.id = organization.sbe1_id
     JOIN sbe2 ON sbe2.id = organization.sbe2_id
+    LEFT JOIN pcn_ti_part ON pcn_ti_part.ti_part_id = organization.ti_part_id
+    LEFT JOIN pcn ON pcn.id = pcn_ti_part.pcn_id
+    LEFT JOIN pcn_executive_status executive ON executive.pcn_id = pcn.id
     GROUP BY sbe.id, sbe1.id, sbe2.id
     ORDER BY sbe.name, sbe1.name, sbe2.name`)
 
@@ -64,6 +78,8 @@ export default defineEventHandler(() => {
         name: row.sbe1_name,
         championEmail: row.champion_email,
         partCount: 0,
+        pendingRaPartCount: 0,
+        pendingRaPcnCount: 0,
         sbe2: []
       }
       sbe1Nodes.set(sbe1Key, node)
@@ -73,7 +89,33 @@ export default defineEventHandler(() => {
     const partCount = Number(row.part_count)
     sbe1.sbe2.push({ id: row.sbe2_id, name: row.sbe2_name, partCount })
     sbe1.partCount += partCount
+    sbe1.pendingRaPartCount += Number(row.pending_ra_part_count)
     sbe.partCount += partCount
+  }
+
+  const pendingRaPcnCounts = all<{ sbe1_id: number, pending_ra_pcn_count: number }>(`SELECT
+      organization.sbe1_id,
+      count(DISTINCT pcn.id) AS pending_ra_pcn_count
+    FROM ti_part_organization organization
+    JOIN pcn_ti_part ON pcn_ti_part.ti_part_id = organization.ti_part_id
+    JOIN pcn ON pcn.id = pcn_ti_part.pcn_id
+    JOIN pcn_executive_status executive ON executive.pcn_id = pcn.id
+    WHERE executive.executive_state = 'MAJOR_BLOCKED_RA'
+      AND EXISTS (
+        SELECT 1 FROM pcn_ti_part missing
+        WHERE missing.pcn_id = pcn.id
+          AND NOT EXISTS (
+            SELECT 1 FROM risk_assessment_ti_part covered
+            JOIN risk_assessment assessment ON assessment.id = covered.risk_assessment_id
+            WHERE assessment.pcn_id = pcn.id AND covered.ti_part_id = missing.ti_part_id
+          )
+          AND missing.ti_part_id = organization.ti_part_id
+      )
+    GROUP BY organization.sbe1_id`)
+  for (const row of pendingRaPcnCounts) {
+    for (const node of sbe1Nodes.values()) {
+      if (node.id === row.sbe1_id) node.pendingRaPcnCount = Number(row.pending_ra_pcn_count)
+    }
   }
 
   const unmapped = all<{ id: number, name: string, champion_email: string | null }>(`SELECT
@@ -95,6 +137,8 @@ export default defineEventHandler(() => {
         name: item.name,
         championEmail: item.champion_email,
         partCount: 0,
+        pendingRaPartCount: 0,
+        pendingRaPcnCount: 0,
         sbe2: []
       }))
     })
