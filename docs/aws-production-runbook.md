@@ -7,7 +7,7 @@ The production deployment was created on 2026-09-01 in AWS account
 
 | Item | Value |
 | --- | --- |
-| Application URL | `https://pcn.duckdns.org` |
+| Application URL | `https://pcn.studio-on.tw` |
 | AWS Region | `ap-northeast-1` (Tokyo) |
 | Lightsail instance | `pcn-workbench-prod` |
 | Lightsail plan | `micro_3_0`: 2 vCPU, 1 GB RAM, 40 GB SSD, US$7/month |
@@ -22,8 +22,9 @@ The production deployment was created on 2026-09-01 in AWS account
 | Halt function | `pcn-budget-emergency-halt` in `us-east-1` |
 | Halt topic | `arn:aws:sns:us-east-1:387367330632:pcn-total-cost-budget-alert` |
 
-The application uses the DuckDNS hostname `pcn.duckdns.org`, which points to the
-Lightsail static IP and has a publicly trusted Caddy-managed certificate.
+The application uses the `pcn.studio-on.tw` hostname managed in Cloudflare. It
+points to the Lightsail static IP and has a publicly trusted Caddy-managed
+certificate.
 
 The instance runs Ubuntu 24.04, Node.js 22, Caddy, SQLite, and AWS CLI v2. The
 application listens only on `127.0.0.1:3000`. Caddy exposes ports 80 and 443.
@@ -162,8 +163,8 @@ aws lambda update-function-code --region us-east-1 \
 
 ## Configure the hostname
 
-The DuckDNS `A` record points `pcn.duckdns.org` to `16.76.33.149`. The server
-`/etc/caddy/Caddyfile` uses this hostname; after changes, validate and reload:
+The server `/etc/caddy/Caddyfile` uses `pcn.studio-on.tw`; after changes,
+validate and reload:
 
 ```bash
 sudo caddy validate --config /etc/caddy/Caddyfile
