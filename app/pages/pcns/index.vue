@@ -9,6 +9,7 @@ const cscStatus = ref(String(route.query.cscStatus || ''))
 const riskAlignment = ref(String(route.query.riskAlignment || ''))
 const raState = ref(String(route.query.raState || ''))
 const changeType = ref(String(route.query.changeType || ''))
+const sbe1 = ref(String(route.query.sbe1 || ''))
 const executiveState = ref(String(route.query.executiveState || ''))
 const revenueFrom = ref(String(route.query.revenueFrom || '2025-08'))
 const revenueTo = ref(String(route.query.revenueTo || '2026-08'))
@@ -17,7 +18,7 @@ const revenueChartTitle = computed(() => executiveState.value === 'MINOR_READY_U
 const exporting = ref(false)
 const exportError = ref('')
 const nrSort = ref<'asc' | 'desc' | null>(null)
-const query = computed(() => ({ search: String(route.query.search || ''), risk: String(route.query.risk || ''), status: String(route.query.status || ''), uploadState: String(route.query.uploadState || ''), cscStatus: String(route.query.cscStatus || ''), riskAlignment: String(route.query.riskAlignment || ''), raState: String(route.query.raState || ''), changeType: String(route.query.changeType || ''), executiveState: String(route.query.executiveState || ''), revenueFrom: String(route.query.revenueFrom || '2025-08'), revenueTo: String(route.query.revenueTo || '2026-08'), pageSize: 'all' }))
+const query = computed(() => ({ search: String(route.query.search || ''), risk: String(route.query.risk || ''), status: String(route.query.status || ''), uploadState: String(route.query.uploadState || ''), cscStatus: String(route.query.cscStatus || ''), riskAlignment: String(route.query.riskAlignment || ''), raState: String(route.query.raState || ''), changeType: String(route.query.changeType || ''), sbe1: String(route.query.sbe1 || ''), executiveState: String(route.query.executiveState || ''), revenueFrom: String(route.query.revenueFrom || '2025-08'), revenueTo: String(route.query.revenueTo || '2026-08'), pageSize: 'all' }))
 const { data, status, refresh } = await useFetch<any>('/api/pcns', { query, watch: [query] })
 const { data: changeTypes } = await useFetch<any[]>('/api/change-types')
 const sortedPcns = computed(() => {
@@ -34,7 +35,7 @@ const revenueChartItems = computed(() => (data.value?.items || [])
   .map((pcn: any) => ({ id: Number(pcn.id), pcnNumber: String(pcn.pcn_number_base), netRevenue: Number(pcn.net_revenue) })))
 let timer: ReturnType<typeof setTimeout>
 function activeFilters() {
-  return { ...(search.value && { search: search.value }), ...(changeType.value && { changeType: changeType.value }), ...(risk.value && { risk: risk.value }), ...(statusFilter.value && { status: statusFilter.value }), ...(uploadState.value && { uploadState: uploadState.value }), ...(cscStatus.value && { cscStatus: cscStatus.value }), ...(riskAlignment.value && { riskAlignment: riskAlignment.value }), ...(raState.value && { raState: raState.value }), ...(executiveState.value && { executiveState: executiveState.value }), revenueFrom: revenueFrom.value, revenueTo: revenueTo.value }
+  return { ...(search.value && { search: search.value }), ...(changeType.value && { changeType: changeType.value }), ...(sbe1.value && { sbe1: sbe1.value }), ...(risk.value && { risk: risk.value }), ...(statusFilter.value && { status: statusFilter.value }), ...(uploadState.value && { uploadState: uploadState.value }), ...(cscStatus.value && { cscStatus: cscStatus.value }), ...(riskAlignment.value && { riskAlignment: riskAlignment.value }), ...(raState.value && { raState: raState.value }), ...(executiveState.value && { executiveState: executiveState.value }), revenueFrom: revenueFrom.value, revenueTo: revenueTo.value }
 }
 
 type ColumnKey = 'record' | 'sbe1' | 'changeType' | 'risk' | 'upload' | 'csc' | 'delta' | 'nr' | 'alignment'
@@ -242,6 +243,7 @@ async function exportToExcel() {
             <button v-if="column.key === 'nr'" type="button" class="column-heading column-sort-button" :title="nrSort === 'asc' ? 'Sort NR decreasing' : nrSort === 'desc' ? 'Do not sort by NR' : 'Sort NR increasing'" draggable="false" @dragstart.prevent @click.stop="cycleNrSort"><Icon name="lucide:grip-vertical" /> {{ column.label }} <Icon :name="nrSort === 'asc' ? 'lucide:arrow-up' : nrSort === 'desc' ? 'lucide:arrow-down' : 'lucide:arrow-up-down'" class="sort-icon" /></button>
             <span v-else class="column-heading"><Icon name="lucide:grip-vertical" /> {{ column.label }}</span>
             <input v-if="column.key === 'record'" v-model="search" class="column-filter" placeholder="Search PCN, part or RA…" @dragstart.prevent @input="applyFilters()" />
+            <select v-else-if="column.key === 'sbe1'" v-model="sbe1" class="column-filter" @dragstart.prevent @change="applyFilters()"><option value="">(All)</option><option v-for="name in data?.sbe1Options || []" :key="name" :value="name">{{ name }}</option></select>
             <select v-else-if="column.key === 'changeType'" v-model="changeType" class="column-filter" @dragstart.prevent @change="applyFilters()"><option value="">(All)</option><option v-for="type in changeTypes" :key="type.id" :value="type.name">{{ type.name }}</option></select>
             <select v-else-if="column.key === 'risk'" v-model="risk" class="column-filter" @dragstart.prevent @change="applyFilters()"><option value="">(All)</option><option>MAJOR</option><option>MINOR</option><option>EOL</option><option>UNKNOWN</option></select>
             <select v-else-if="column.key === 'upload'" v-model="uploadState" class="column-filter" @dragstart.prevent @change="applyFilters()"><option value="">(All)</option><option value="ALL_UPLOADED">All uploaded</option><option value="PARTLY_UPLOADED">Partly uploaded</option><option value="NOT_UPLOADED">Not uploaded</option></select>

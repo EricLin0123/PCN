@@ -5,7 +5,7 @@
  * Candidate families come from "Products Supported" in BU contact list.XLSX.
  * A candidate is accepted only when its part-number prefix is also associated
  * exclusively with the same SBE-1 among existing authoritative assignments.
- * Existing ti_part_sbe1 rows are never updated.
+ * Existing ti_part_organization SBE-1 assignments are never updated.
  */
 
 import { basename, resolve } from 'node:path'
@@ -149,13 +149,13 @@ try {
     : ''
   const assigned = database.prepare(`SELECT tp.normalized_part_number AS part, sbe1.name AS sbe1
     FROM ti_part tp
-    JOIN ti_part_sbe1 assignment ON assignment.ti_part_id = tp.id
+    JOIN ti_part_organization assignment ON assignment.ti_part_id = tp.id
     JOIN sbe1 ON sbe1.id = assignment.sbe1_id
     ${authoritativeClause}`).all()
   const missing = database.prepare(`SELECT tp.id, tp.normalized_part_number AS part
     FROM ti_part tp
-    LEFT JOIN ti_part_sbe1 assignment ON assignment.ti_part_id = tp.id
-    WHERE assignment.ti_part_id IS NULL`).all()
+    LEFT JOIN ti_part_organization assignment ON assignment.ti_part_id = tp.id
+    WHERE assignment.sbe1_id IS NULL`).all()
 
   const learnedPrefixes = new Map()
   for (const { part, sbe1 } of assigned) {
@@ -175,13 +175,19 @@ try {
   if (values.apply) {
     database.exec('BEGIN IMMEDIATE')
     const sbe1Ids = new Map(database.prepare('SELECT name, id FROM sbe1').all().map(row => [row.name, row.id]))
-    const insert = database.prepare('INSERT OR IGNORE INTO ti_part_sbe1(ti_part_id, sbe1_id) VALUES (?, ?)')
+    const insert = database.prepare(`INSERT INTO ti_part_organization(
+        ti_part_id, sbe_id, sbe1_id, sbe2_id, source_file, source_sheet, source_row
+      ) VALUES (?, NULL, ?, NULL, ?, 'prefix inference', 0)
+      ON CONFLICT(ti_part_id) DO UPDATE SET
+        sbe1_id = CASE WHEN ti_part_organization.sbe1_id IS NULL THEN excluded.sbe1_id ELSE ti_part_organization.sbe1_id END,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE ti_part_organization.sbe1_id IS NULL`)
     const audit = database.prepare(`INSERT INTO ti_part_sbe1_inference(
       ti_part_id, sbe1_id, reference_file, matched_prefix, evidence_count
     ) VALUES (?, ?, ?, ?, ?)`)
     for (const { id, inference } of inferred) {
       const sbe1Id = sbe1Ids.get(inference.sbe1)
-      const result = insert.run(id, sbe1Id)
+      const result = insert.run(id, sbe1Id, basename(values.reference))
       if (result.changes) audit.run(id, sbe1Id, basename(values.reference), inference.prefix, inference.evidence)
     }
     database.exec('COMMIT')

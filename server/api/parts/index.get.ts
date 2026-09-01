@@ -88,12 +88,11 @@ export default defineEventHandler((event) => {
   const clause = where.length ? `WHERE ${where.join(' AND ')}` : ''
   const joins = `FROM ti_part tp
     JOIN part_nr_cache nr_cache ON nr_cache.ti_part_id = tp.id
-    LEFT JOIN ti_part_sbe1 assignment ON assignment.ti_part_id = tp.id
+    LEFT JOIN ti_part_organization assignment ON assignment.ti_part_id = tp.id
     LEFT JOIN sbe1 ON sbe1.id = assignment.sbe1_id
     LEFT JOIN ti_part_sbe1_inference inference ON inference.ti_part_id = tp.id
-    LEFT JOIN ti_part_organization organization ON organization.ti_part_id = tp.id
-    LEFT JOIN sbe ON sbe.id = organization.sbe_id
-    LEFT JOIN sbe2 ON sbe2.id = organization.sbe2_id`
+    LEFT JOIN sbe ON sbe.id = assignment.sbe_id
+    LEFT JOIN sbe2 ON sbe2.id = assignment.sbe2_id`
   const total = get<{ count: number }>(`SELECT count(*) AS count ${joins} ${clause}`, ...params)?.count || 0
   if (showAll) pageSize = Math.max(1, total)
   const items = all<any>(`SELECT
@@ -158,7 +157,7 @@ export default defineEventHandler((event) => {
     ${joins}`)
   const sbe1Options = all(`SELECT sbe1.name, count(assignment.ti_part_id) AS part_count
     FROM sbe1
-    LEFT JOIN ti_part_sbe1 assignment ON assignment.sbe1_id = sbe1.id
+    LEFT JOIN ti_part_organization assignment ON assignment.sbe1_id = sbe1.id
     GROUP BY sbe1.id ORDER BY sbe1.name`)
 
   return {

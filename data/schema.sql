@@ -109,6 +109,7 @@ CREATE TABLE IF NOT EXISTS sbe2 (
   name TEXT NOT NULL UNIQUE
 );
 
+-- Legacy ownership table retained only long enough to migrate populated databases.
 CREATE TABLE IF NOT EXISTS ti_part_sbe1 (
   ti_part_id INTEGER PRIMARY KEY REFERENCES ti_part(id) ON DELETE CASCADE,
   sbe1_id INTEGER NOT NULL REFERENCES sbe1(id)
@@ -133,6 +134,36 @@ CREATE TABLE IF NOT EXISTS ti_part_organization (
   source_row INTEGER NOT NULL,
   updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Consolidate legacy SBE-1-only assignments into the organization record.
+-- Existing organization assignments win when both sources contain a value.
+UPDATE ti_part_organization
+SET sbe1_id = (SELECT legacy.sbe1_id FROM ti_part_sbe1 legacy WHERE legacy.ti_part_id = ti_part_organization.ti_part_id),
+    updated_at = CURRENT_TIMESTAMP
+WHERE sbe1_id IS NULL
+  AND EXISTS (SELECT 1 FROM ti_part_sbe1 legacy WHERE legacy.ti_part_id = ti_part_organization.ti_part_id);
+
+INSERT OR IGNORE INTO ti_part_organization(
+  ti_part_id, sbe_id, sbe1_id, sbe2_id, source_file, source_sheet, source_row
+)
+SELECT ti_part_id, NULL, sbe1_id, NULL, 'legacy ti_part_sbe1 migration', 'database', 0
+FROM ti_part_sbe1;
+
+DROP TABLE ti_part_sbe1;
+
+-- Inference is audit evidence only. Once canonical ownership changes or is
+-- removed, stale evidence must not continue to describe the current owner.
+CREATE TRIGGER IF NOT EXISTS clear_sbe1_inference_after_organization_update
+AFTER UPDATE OF sbe1_id ON ti_part_organization
+BEGIN
+  DELETE FROM ti_part_sbe1_inference WHERE ti_part_id = NEW.ti_part_id;
+END;
+
+CREATE TRIGGER IF NOT EXISTS clear_sbe1_inference_after_organization_delete
+AFTER DELETE ON ti_part_organization
+BEGIN
+  DELETE FROM ti_part_sbe1_inference WHERE ti_part_id = OLD.ti_part_id;
+END;
 
 CREATE TABLE IF NOT EXISTS pcn_ti_part (
   pcn_id INTEGER NOT NULL REFERENCES pcn(id) ON DELETE CASCADE,
@@ -246,7 +277,6 @@ AFTER INSERT ON ti_part
 BEGIN
   DELETE FROM part_nr_cache;
 END;
-CREATE INDEX IF NOT EXISTS idx_ti_part_sbe1_sbe1 ON ti_part_sbe1(sbe1_id);
 CREATE INDEX IF NOT EXISTS idx_ti_part_organization_sbe ON ti_part_organization(sbe_id);
 CREATE INDEX IF NOT EXISTS idx_ti_part_organization_sbe1 ON ti_part_organization(sbe1_id);
 CREATE INDEX IF NOT EXISTS idx_ti_part_organization_sbe2 ON ti_part_organization(sbe2_id);

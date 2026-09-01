@@ -13,6 +13,7 @@ export default defineEventHandler((event) => {
   const riskAlignment = String(query.riskAlignment || '').trim().toUpperCase()
   const raState = String(query.raState || '').trim().toUpperCase()
   const changeType = String(query.changeType || '').trim()
+  const sbe1 = String(query.sbe1 || '').trim()
   const executiveState = String(query.executiveState || '').trim().toUpperCase()
   const requestedRevenueFrom = String(query.revenueFrom || '').trim()
   const requestedRevenueTo = String(query.revenueTo || '').trim()
@@ -46,6 +47,13 @@ export default defineEventHandler((event) => {
     where.push('ct.name = ?')
     params.push(changeType)
   }
+  if (sbe1) {
+    where.push(`EXISTS (SELECT 1 FROM pcn_ti_part sbe1_parts
+      WHERE sbe1_parts.pcn_id = p.id AND (
+        EXISTS (SELECT 1 FROM ti_part_organization sbe1_mapping WHERE sbe1_mapping.ti_part_id = sbe1_parts.ti_part_id AND sbe1_mapping.sbe1_id = (SELECT id FROM sbe1 WHERE name = ?))
+      ))`)
+    params.push(sbe1)
+  }
   if (status) {
     where.push('pds.delta_status = ?')
     params.push(status)
@@ -78,10 +86,10 @@ export default defineEventHandler((event) => {
       (SELECT group_concat(owners.sbe1_name, '; ')
        FROM (
          SELECT DISTINCT sbe1.name AS sbe1_name
-         FROM pcn_ti_part owner_parts
-         JOIN ti_part_organization owner_mapping ON owner_mapping.ti_part_id = owner_parts.ti_part_id
-         JOIN sbe1 ON sbe1.id = owner_mapping.sbe1_id
-         WHERE owner_parts.pcn_id = p.id
+       FROM pcn_ti_part owner_parts
+       JOIN ti_part_organization owner_mapping ON owner_mapping.ti_part_id = owner_parts.ti_part_id
+       JOIN sbe1 ON sbe1.id = owner_mapping.sbe1_id
+       WHERE owner_parts.pcn_id = p.id
          ORDER BY sbe1.name
        ) owners) AS sbe1_names,
       (SELECT group_concat(affected.display_part_number, '; ')
@@ -167,5 +175,6 @@ export default defineEventHandler((event) => {
     JOIN pcn_delta_status pds ON pds.pcn_id = p.id
     LEFT JOIN pcn_csc_upload cu ON cu.pcn_id = p.id ${clause}
     ORDER BY ${isRevenuePriorityQueue ? 'net_revenue DESC,' : ''} p.notification_date DESC, p.pcn_number_base DESC LIMIT ? OFFSET ?`, revenueFrom, revenueTo, revenueFrom, revenueTo, ...params, pageSize, (page - 1) * pageSize)
-  return { items, total, page: showAll ? 1 : page, pageSize, pages: showAll ? 1 : Math.max(1, Math.ceil(total / pageSize)), revenueFrom, revenueTo, isRevenuePriorityQueue }
+  const sbe1Options = all<{ name: string }>('SELECT name FROM sbe1 ORDER BY name').map(item => item.name)
+  return { items, total, page: showAll ? 1 : page, pageSize, pages: showAll ? 1 : Math.max(1, Math.ceil(total / pageSize)), revenueFrom, revenueTo, isRevenuePriorityQueue, sbe1Options }
 })

@@ -7,7 +7,7 @@
  */
 
 import { readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
+import { basename, resolve } from 'node:path'
 import { parseArgs } from 'node:util'
 import { DatabaseSync } from 'node:sqlite'
 import ExcelJS from 'exceljs'
@@ -70,7 +70,7 @@ async function readOwners(path) {
     if (existing && existing.sbe1Name !== sbe1Name) {
       throw new Error(`part ${part} has conflicting SBE-1 values at row ${rowNumber}`)
     }
-    result.set(part, { displayPart, sbe1Name })
+    result.set(part, { displayPart, sbe1Name, sourceRow: rowNumber })
   }
   return { parts: result, blankPartRows }
 }
@@ -115,22 +115,30 @@ try {
   const insertPart = database.prepare('INSERT OR IGNORE INTO ti_part(normalized_part_number, display_part_number) VALUES (?, ?)')
   const findPart = database.prepare('SELECT id FROM ti_part WHERE normalized_part_number = ?')
   const findSbe1 = database.prepare('SELECT id FROM sbe1 WHERE name = ?')
-  const assignPart = database.prepare(`INSERT INTO ti_part_sbe1(ti_part_id, sbe1_id) VALUES (?, ?)
-    ON CONFLICT(ti_part_id) DO UPDATE SET sbe1_id = excluded.sbe1_id`)
-  const clearPartAssignment = database.prepare('DELETE FROM ti_part_sbe1 WHERE ti_part_id = ?')
+  const assignPart = database.prepare(`INSERT INTO ti_part_organization(
+      ti_part_id, sbe_id, sbe1_id, sbe2_id, source_file, source_sheet, source_row
+    ) VALUES (?, NULL, ?, NULL, ?, ?, ?)
+    ON CONFLICT(ti_part_id) DO UPDATE SET
+      sbe1_id = excluded.sbe1_id,
+      source_file = excluded.source_file,
+      source_sheet = excluded.source_sheet,
+      source_row = excluded.source_row,
+      updated_at = CURRENT_TIMESTAMP`)
+  const clearPartAssignment = database.prepare(`UPDATE ti_part_organization
+    SET sbe1_id = NULL, updated_at = CURRENT_TIMESTAMP WHERE ti_part_id = ?`)
 
   for (const [name, championEmail] of contacts) upsertSbe1.run(name, championEmail)
   for (const { sbe1Name } of parts.values()) {
     if (sbe1Name) insertSbe1WithoutContact.run(sbe1Name)
   }
-  for (const [part, { displayPart, sbe1Name }] of parts) {
+  for (const [part, { displayPart, sbe1Name, sourceRow }] of parts) {
     insertPart.run(part, displayPart)
     const partId = findPart.get(part).id
     if (!sbe1Name) {
       clearPartAssignment.run(partId)
       continue
     }
-    assignPart.run(partId, findSbe1.get(sbe1Name).id)
+    assignPart.run(partId, findSbe1.get(sbe1Name).id, basename(values.owners), 'SBE-1 ownership', sourceRow)
   }
 
   database.exec('COMMIT')
@@ -138,10 +146,10 @@ try {
     workbook_parts: parts.size,
     blank_part_rows: blankPartRows,
     parts_created: database.prepare('SELECT count(*) AS count FROM ti_part').get().count - existingPartCount,
-    part_ownership_assignments: database.prepare('SELECT count(*) AS count FROM ti_part_sbe1').get().count,
+    part_ownership_assignments: database.prepare('SELECT count(*) AS count FROM ti_part_organization WHERE sbe1_id IS NOT NULL').get().count,
     sbe1_groups: database.prepare('SELECT count(*) AS count FROM sbe1').get().count,
     groups_with_champion_email: database.prepare('SELECT count(*) AS count FROM sbe1 WHERE champion_email IS NOT NULL').get().count,
-    owned_parts_without_champion_email: database.prepare(`SELECT count(*) AS count FROM ti_part_sbe1 assignment
+    owned_parts_without_champion_email: database.prepare(`SELECT count(*) AS count FROM ti_part_organization assignment
       JOIN sbe1 ON sbe1.id = assignment.sbe1_id WHERE sbe1.champion_email IS NULL`).get().count
   }
   console.log(JSON.stringify(report, null, 2))

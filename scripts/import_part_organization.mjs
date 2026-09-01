@@ -95,9 +95,6 @@ try {
   const findSbe = database.prepare('SELECT id FROM sbe WHERE name = ?')
   const findSbe1 = database.prepare('SELECT id FROM sbe1 WHERE name = ?')
   const findSbe2 = database.prepare('SELECT id FROM sbe2 WHERE name = ?')
-  const assignSbe1 = database.prepare(`INSERT INTO ti_part_sbe1(ti_part_id, sbe1_id) VALUES (?, ?)
-    ON CONFLICT(ti_part_id) DO UPDATE SET sbe1_id = excluded.sbe1_id`)
-  const clearSbe1 = database.prepare('DELETE FROM ti_part_sbe1 WHERE ti_part_id = ?')
   const clearInference = database.prepare('DELETE FROM ti_part_sbe1_inference WHERE ti_part_id = ?')
   const upsertOrganization = database.prepare(`INSERT INTO ti_part_organization(
       ti_part_id, sbe_id, sbe1_id, sbe2_id, source_file, source_sheet, source_row
@@ -123,8 +120,6 @@ try {
     const sbeId = organization.sbe ? findSbe.get(organization.sbe).id : null
     const sbe1Id = organization.sbe1 ? findSbe1.get(organization.sbe1).id : null
     const sbe2Id = organization.sbe2 ? findSbe2.get(organization.sbe2).id : null
-    if (sbe1Id) assignSbe1.run(partId, sbe1Id)
-    else clearSbe1.run(partId)
     clearInference.run(partId)
     upsertOrganization.run(partId, sbeId, sbe1Id, sbe2Id, basename(workbookPath), worksheetName, organization.sourceRow)
   }

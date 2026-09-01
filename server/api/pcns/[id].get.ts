@@ -55,9 +55,8 @@ export default defineEventHandler((event) => {
     FROM pcn_ti_part pp
     JOIN pcn p ON p.id = pp.pcn_id
     JOIN ti_part tp ON tp.id = pp.ti_part_id
-    LEFT JOIN ti_part_sbe1 assignment ON assignment.ti_part_id = tp.id
-    LEFT JOIN sbe1 ON sbe1.id = assignment.sbe1_id
     LEFT JOIN ti_part_organization organization ON organization.ti_part_id = tp.id
+    LEFT JOIN sbe1 ON sbe1.id = organization.sbe1_id
     LEFT JOIN sbe ON sbe.id = organization.sbe_id
     LEFT JOIN sbe2 ON sbe2.id = organization.sbe2_id
     WHERE pp.pcn_id = ? ORDER BY tp.normalized_part_number`, revenueFrom, revenueTo, id)
