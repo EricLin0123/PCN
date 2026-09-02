@@ -76,7 +76,8 @@ CREATE TABLE IF NOT EXISTS pcn_csc_upload (
 CREATE TABLE IF NOT EXISTS ti_part (
   id INTEGER PRIMARY KEY,
   normalized_part_number TEXT NOT NULL UNIQUE,
-  display_part_number TEXT NOT NULL
+  display_part_number TEXT NOT NULL,
+  industry TEXT
 );
 
 -- Monthly material revenue imported from the Step 6 current-backlog dashboard.

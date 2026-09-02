@@ -17,7 +17,7 @@ export default defineEventHandler((event) => {
     FROM pcn p LEFT JOIN change_type ct ON ct.id = p.change_type_id
     JOIN pcn_operational_status ops ON ops.pcn_id = p.id WHERE p.id = ?`, id)
   if (!pcn) throw createError({ statusCode: 404, statusMessage: 'PCN not found' })
-  const parts = all<any>(`SELECT tp.id, tp.display_part_number, tp.normalized_part_number,
+  const parts = all<any>(`SELECT tp.id, tp.display_part_number, tp.normalized_part_number, tp.industry,
       sbe.name AS sbe_name, sbe1.name AS sbe1_name, sbe2.name AS sbe2_name, sbe1.champion_email,
       EXISTS (
         SELECT 1

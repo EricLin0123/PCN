@@ -13,6 +13,10 @@ export function useDatabase() {
   database = new DatabaseSync(path)
   database.exec('PRAGMA foreign_keys = ON; PRAGMA journal_mode = WAL; PRAGMA busy_timeout = 5000;')
   database.exec(readFileSync(resolve(process.cwd(), 'data/schema.sql'), 'utf8'))
+  const tiPartColumns = database.prepare('PRAGMA table_info(ti_part)').all() as { name: string }[]
+  if (!tiPartColumns.some((column) => column.name === 'industry')) {
+    database.exec('ALTER TABLE ti_part ADD COLUMN industry TEXT')
+  }
   seedAccount(database, 'PCN_ADMIN_USERNAME', 'PCN_ADMIN_PASSWORD', 'admin')
   seedAccount(database, 'PCN_OPERATOR_USERNAME', 'PCN_OPERATOR_PASSWORD', 'operator')
   return database

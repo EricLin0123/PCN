@@ -99,6 +99,7 @@ export default defineEventHandler((event) => {
       tp.id,
       tp.display_part_number,
       tp.normalized_part_number,
+      tp.industry,
       sbe.name AS sbe_name,
       sbe1.name AS sbe1_name,
       sbe2.name AS sbe2_name,

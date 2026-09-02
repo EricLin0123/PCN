@@ -104,14 +104,14 @@ function cycleNrSort() {
       <div class="list-meta"><span v-if="data"><strong>{{ data.items.length.toLocaleString() }}</strong> of {{ data.total.toLocaleString() }} matching parts loaded</span><span v-if="status === 'pending'" class="nr-calculating"><Icon name="lucide:loader-circle" class="spin" /> {{ data?.items.length ? 'Loading more parts…' : 'Calculating NR…' }}</span></div>
       <div v-if="data?.items.length" class="table-wrap" @scroll.passive="onTableScroll"><table class="parts-table">
         <thead><tr>
-          <th><span class="column-heading">TI part / related record</span><input v-model="search" class="column-filter" placeholder="Search part, PCN, RA, Delta…" @input="applyFilters()" /></th>
+          <th><span class="column-heading">TI part / industry</span><input v-model="search" class="column-filter" placeholder="Search part, PCN, RA, Delta…" @input="applyFilters()" /></th>
           <th><button type="button" class="column-heading nr-sort-button" :title="nrSort === 'desc' ? 'Sort NR increasing' : 'Sort NR decreasing'" @click="cycleNrSort">NR <Icon :name="nrSort === 'asc' ? 'lucide:arrow-up' : nrSort === 'desc' ? 'lucide:arrow-down' : 'lucide:arrow-up-down'" /></button></th>
           <th><span class="column-heading">Organization</span><select v-model="sbe1" class="column-filter" @change="applyFilters()"><option value="">All SBE-1</option><option v-for="option in data.sbe1Options" :key="option.name" :value="option.name">{{ option.name }} ({{ option.part_count }})</option></select></th>
           <th><span class="column-heading">Assignment</span><select v-model="source" class="column-filter" @change="applyFilters()"><option value="">(All)</option><option value="AUTHORITATIVE">Authoritative</option><option value="INFERRED">Inferred</option><option value="UNASSIGNED">Unassigned</option></select></th>
           <th>Champion</th><th>Related PCNs</th><th>Risk assessments</th><th>Delta materials</th>
         </tr></thead>
         <tbody><tr v-for="part in data.items" :key="part.id">
-          <td><strong class="mono part-number">{{ part.display_part_number }}</strong><small v-if="part.display_part_number !== part.normalized_part_number" class="part-secondary">{{ part.normalized_part_number }}</small></td>
+          <td><strong class="mono part-number">{{ part.display_part_number }}</strong><small v-if="part.display_part_number !== part.normalized_part_number" class="part-secondary">{{ part.normalized_part_number }}</small><small class="part-secondary">Industry: {{ part.industry || '—' }}</small></td>
           <td class="nr-cell"><strong>{{ Number(part.net_revenue).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}</strong></td>
           <td><span class="organization-path"><small>SBE</small><strong>{{ part.sbe_name || '—' }}</strong><small>SBE-1</small><strong>{{ part.sbe1_name || '—' }}</strong><small>SBE-2</small><strong>{{ part.sbe2_name || '—' }}</strong></span></td>
           <td><span class="ownership-label" :class="`ownership-${part.ownership_source.toLowerCase()}`">{{ part.ownership_source }}</span><small v-if="part.ownership_source === 'INFERRED'" class="part-secondary">Prefix {{ part.matched_prefix }} · {{ part.evidence_count }} reference{{ part.evidence_count === 1 ? '' : 's' }}</small></td>
