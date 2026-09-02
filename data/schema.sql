@@ -499,6 +499,16 @@ SELECT
       AND ops.expected_risk = 'MINOR' THEN 'MINOR_PENDING_APPROVAL'
     WHEN current_delta.has_processing = 1
       AND ops.expected_risk = 'MAJOR' THEN 'MAJOR_PENDING_APPROVAL'
+    WHEN ops.upload_state <> 'ALL_UPLOADED'
+      AND ops.expected_risk IN ('MINOR', 'MAJOR')
+      AND COALESCE((
+        SELECT sum(mmr.net_revenue)
+        FROM pcn_ti_part pp
+        JOIN ti_part tp ON tp.id = pp.ti_part_id
+        JOIN material_month_revenue mmr ON mmr.normalized_part_number = tp.normalized_part_number
+        WHERE pp.pcn_id = p.id
+          AND mmr.revenue_month BETWEEN '2025-08' AND strftime('%Y-%m', 'now', 'localtime')
+      ), 0) = 0 THEN 'NO_12M_SALES'
     WHEN ops.upload_state <> 'ALL_UPLOADED' AND ops.expected_risk = 'MINOR' THEN 'MINOR_READY_UPLOAD'
     WHEN ops.upload_state <> 'ALL_UPLOADED' AND ops.expected_risk = 'MAJOR' AND rac.ra_state <> 'FULL_RA' THEN 'MAJOR_BLOCKED_RA'
     WHEN ops.upload_state <> 'ALL_UPLOADED' AND ops.expected_risk = 'MAJOR' AND rac.ra_state = 'FULL_RA' THEN 'MAJOR_READY_UPLOAD'

@@ -7,7 +7,7 @@ export default defineEventHandler((event) => {
   const requestedRevenueFrom = String(query.revenueFrom || '').trim()
   const requestedRevenueTo = String(query.revenueTo || '').trim()
   const revenueFrom = validMonth(requestedRevenueFrom) ? requestedRevenueFrom : '2025-08'
-  const revenueTo = validMonth(requestedRevenueTo) ? requestedRevenueTo : '2026-08'
+  const revenueTo = validMonth(requestedRevenueTo) ? requestedRevenueTo : '2026-09'
   if (revenueFrom > revenueTo) throw createError({ statusCode: 400, statusMessage: 'Revenue start month must not be after end month' })
   const pcn = get<any>(`SELECT p.id, p.pcn_number_base, p.notification_date, p.title, p.change_type_id,
       ct.name AS change_type, ct.default_risk, p.risk_override,

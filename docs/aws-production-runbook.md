@@ -14,7 +14,7 @@ The production deployment was created on 2026-09-01 in AWS account
 | Static IP | `pcn-workbench-prod-ip` / `16.76.33.149` |
 | SSH key pair | `pcn-workbench-prod-key` |
 | Local private key | `/Users/wanchuan/.ssh/pcn-workbench-prod` |
-| Active initial release | `/opt/pcn/releases/20260831T161448Z` |
+| Active release | `/opt/pcn/releases/20260901T153606Z` (`e54b7db`) |
 | Live database | `/var/lib/pcn/pcn.db` |
 | Backup bucket | `pcn-workbench-backup-387367330632-ap-northeast-1` |
 | Backup IAM user | `pcn-backup-prod` |
@@ -321,7 +321,9 @@ AWS-side removal is intended.
 ## Launch validation record
 
 The initial release passed local typecheck, production build, and
-`git diff --check`. The source and deployed database both returned `ok` for
+`git diff --check`. Release `e54b7db` (“Fix SBE data”) was deployed on
+2026-09-01 as `/opt/pcn/releases/20260901T153606Z`; it includes the SBE data
+fixes and the current idempotent schema. The source and deployed database both returned `ok` for
 `PRAGMA integrity_check` and no foreign-key errors. Representative deployed and
 restored-backup counts matched: 858 PCNs, 9,438 TI parts, 641 Delta forms, 9,634
 Delta mappings, 183 risk assessments, 58,569 monthly revenue rows, 3,398

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 const route = useRoute()
 const revenueFrom = ref(String(route.query.revenueFrom || '2025-08'))
-const revenueTo = ref(String(route.query.revenueTo || '2026-08'))
+const revenueTo = ref(String(route.query.revenueTo || '2026-09'))
 const revenueQuery = computed(() => ({ revenueFrom: revenueFrom.value, revenueTo: revenueTo.value }))
 const { data, error, refresh } = await useFetch<any>(`/api/pcns/${route.params.id}`, { query: revenueQuery, watch: [revenueQuery] })
 const { data: changeTypes } = await useFetch<any[]>('/api/change-types')

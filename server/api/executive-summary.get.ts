@@ -1,6 +1,7 @@
 import { all, get } from '../utils/db'
 
 const definitions = [
+  { key: 'NO_12M_SALES', owner: 'TI', status: 'No 12M sales', definition: 'PCN with 0 NR from Aug 2025 through today, reassigned from an upload queue', action: 'Review sales exposure', tone: 'black' },
   { key: 'MINOR_READY_UPLOAD', owner: 'TI', status: 'Minor ready for upload', definition: 'MINOR PCN with at least one affected material pending upload', action: 'Upload to Delta', tone: 'yellow' },
   { key: 'MAJOR_BLOCKED_RA', owner: 'TI', status: 'Major blocked by RA', definition: 'MAJOR PCN pending upload without full material-level RA coverage', action: 'Complete / Verify RA', tone: 'red' },
   { key: 'MAJOR_READY_UPLOAD', owner: 'TI', status: 'Major ready for upload', definition: 'MAJOR PCN pending upload with full material-level RA coverage', action: 'Upload with RA', tone: 'yellow' },
@@ -13,7 +14,7 @@ const definitions = [
 
 export default defineEventHandler(() => {
   const revenueFrom = '2025-08'
-  const revenueTo = '2026-08'
+  const revenueTo = '2026-09'
   const counts = new Map(all<{ key: string; value: number }>(
     'SELECT executive_state AS key, count(*) AS value FROM pcn_executive_status GROUP BY executive_state',
   ).map(item => [item.key, item.value]))
