@@ -63,8 +63,10 @@
 .sbe1-node > div strong { font-size: 16px; }
 .sbe1-node > small { display: block; margin-top: 4px; color: #657083; font-size: 10px; }
 .sbe1-summary { display: grid; grid-template-columns: 1fr 1fr; align-self: stretch; border-left: 2px solid #000; }
-.sbe1-summary > div { display: flex; flex-direction: column; justify-content: center; padding: 12px 16px; text-align: center; transition: background-color .2s ease; }
-.sbe1-summary > div + div { border-left: 1px solid #000; }
+.sbe1-summary > button { display: flex; flex-direction: column; justify-content: center; align-items: center; min-width: 0; padding: 12px 16px; border: 0; border-radius: 0; color: #000; text-align: center; transition: filter .15s ease, box-shadow .15s ease; }
+.sbe1-summary > button + button { border-left: 1px solid #000; }
+.sbe1-summary > button:hover { filter: brightness(.94); box-shadow: inset 0 0 0 3px #000; }
+.sbe1-summary > button:focus-visible { position: relative; z-index: 1; outline: 3px solid #6258df; outline-offset: -3px; }
 .sbe1-summary small { color: #657083; font-size: 9px; font-weight: 900; letter-spacing: .1em; text-transform: uppercase; }
 .sbe1-summary strong { margin-top: 8px; font-size: 38px; line-height: 1; }
 .champion-missing { display: flex; align-items: center; gap: 5px; margin-top: 9px; }
@@ -120,6 +122,22 @@
 .sbe2-empty { margin: 0 0 0 14px; padding: 8px 10px 8px 20px; border-left: 1px solid #aab1bc; color: #657083; background: #f8f9fb; font-size: 10px; }
 .organization-skeleton { height: 520px; border-radius: 0; }
 
+.pending-detail-backdrop { position: fixed; inset: 0; z-index: 40; display: grid; place-items: center; padding: 30px; background: #0d1427b8; }
+.pending-detail { display: flex; flex-direction: column; width: min(1100px, 100%); max-height: min(820px, calc(100vh - 60px)); border: 2px solid #000; background: #fff; box-shadow: 0 24px 70px #0006; }
+.pending-detail > header { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 18px 20px; border-bottom: 2px solid #000; }
+.pending-detail > header h2 { margin: 3px 0 0; font-size: 21px; }
+.pending-detail > header .icon-button { flex: 0 0 auto; border-color: #000; border-radius: 0; }
+.pending-detail-meta { min-height: 42px; padding: 13px 18px; border-bottom: 1px solid #8f9baa; color: #596274; font-size: 11px; }
+.pending-detail-meta span { display: flex; align-items: center; gap: 6px; }
+.pending-detail-loading { padding: 8px; }
+.pending-detail-table { min-height: 0; overflow: auto; }
+.pending-detail-table thead { position: sticky; top: 0; z-index: 1; background: #e7ebf0; }
+.pending-detail-table th { color: #000; border-color: #000; }
+.pending-detail-table td { vertical-align: top; }
+.pending-related-list { display: flex; flex-wrap: wrap; gap: 5px 10px; }
+.pending-related-list a { white-space: nowrap; }
+.pending-detail > .empty-state { overflow: auto; }
+
 @media(max-width:760px) {
   .organization-metrics { grid-template-columns: repeat(2, 1fr); }
   .organization-metrics > div:nth-child(2) { border-right: 0; }
@@ -130,7 +148,9 @@
   .sbe1-node > div { align-items: flex-start; flex-direction: column; }
   .sbe1-branch { grid-template-columns: 1fr; }
   .sbe1-summary { border-top: 2px solid #000; border-left: 0; }
-  .sbe1-summary > div { padding: 10px; }
+  .sbe1-summary > button { padding: 10px; }
   .champion-email-editor { width: 100%; margin-left: 0; }
   .champion-email-editor input { width: 100%; }
+  .pending-detail-backdrop { padding: 10px; }
+  .pending-detail { max-height: calc(100vh - 20px); }
 }

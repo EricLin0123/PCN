@@ -5,6 +5,9 @@ const { isAdmin } = useAuth()
 const savingChampionId = ref<number | null>(null)
 const message = ref('')
 const messageType = ref('success')
+const pendingDetail = ref<any>(null)
+const pendingDetailLoading = ref(false)
+const pendingDetailError = ref('')
 const pendingMetricKeys = [
   'pendingRaPartCount',
   'pendingRaPcnCount',
@@ -64,6 +67,44 @@ function pendingHeatmapStyle(key: PendingMetricKey, value: number) {
 
   return { backgroundColor: `hsl(${120 * (1 - ratio)} 72% 84%)` }
 }
+
+async function showPendingDetail(group: any, documentType: 'RA' | 'PPAP', groupBy: 'part' | 'pcn') {
+  pendingDetail.value = {
+    sbe1: { id: group.id, name: group.name },
+    documentType,
+    groupBy,
+    items: []
+  }
+  pendingDetailLoading.value = true
+  pendingDetailError.value = ''
+  try {
+    pendingDetail.value = await $fetch(`/api/sbe1/${group.id}/pending`, {
+      query: { documentType, groupBy }
+    })
+  } catch (detailError: any) {
+    pendingDetailError.value = detailError.data?.statusMessage || 'Unable to load pending records.'
+  } finally {
+    pendingDetailLoading.value = false
+  }
+}
+
+function closePendingDetail() {
+  pendingDetail.value = null
+  pendingDetailError.value = ''
+}
+
+function pendingDetailTitle() {
+  if (!pendingDetail.value) return ''
+  const unit = pendingDetail.value.groupBy === 'part' ? 'parts' : 'PCNs'
+  return `Pending ${pendingDetail.value.documentType} ${unit}`
+}
+
+function closePendingDetailOnEscape(event: KeyboardEvent) {
+  if (event.key === 'Escape' && pendingDetail.value) closePendingDetail()
+}
+
+onMounted(() => window.addEventListener('keydown', closePendingDetailOnEscape))
+onBeforeUnmount(() => window.removeEventListener('keydown', closePendingDetailOnEscape))
 </script>
 
 <template>
@@ -131,10 +172,10 @@ function pendingHeatmapStyle(key: PendingMetricKey, value: number) {
               <div v-else class="sbe2-empty">No SBE-2 mapping</div>
             </div>
             <div class="sbe1-summary">
-              <div :style="pendingHeatmapStyle('pendingRaPartCount', group.pendingRaPartCount)"><small>Pending RA parts</small><strong>{{ group.pendingRaPartCount.toLocaleString() }}</strong></div>
-              <div :style="pendingHeatmapStyle('pendingRaPcnCount', group.pendingRaPcnCount)"><small>Pending RA PCNs</small><strong>{{ group.pendingRaPcnCount.toLocaleString() }}</strong></div>
-              <div :style="pendingHeatmapStyle('pendingPpapPartCount', group.pendingPpapPartCount)"><small>Pending PPAP parts</small><strong>{{ group.pendingPpapPartCount.toLocaleString() }}</strong></div>
-              <div :style="pendingHeatmapStyle('pendingPpapPcnCount', group.pendingPpapPcnCount)"><small>Pending PPAP PCNs</small><strong>{{ group.pendingPpapPcnCount.toLocaleString() }}</strong></div>
+              <button type="button" :style="pendingHeatmapStyle('pendingRaPartCount', group.pendingRaPartCount)" :aria-label="`Show ${group.pendingRaPartCount} pending RA parts for ${group.name}`" @click="showPendingDetail(group, 'RA', 'part')"><small>Pending RA parts</small><strong>{{ group.pendingRaPartCount.toLocaleString() }}</strong></button>
+              <button type="button" :style="pendingHeatmapStyle('pendingRaPcnCount', group.pendingRaPcnCount)" :aria-label="`Show ${group.pendingRaPcnCount} pending RA PCNs for ${group.name}`" @click="showPendingDetail(group, 'RA', 'pcn')"><small>Pending RA PCNs</small><strong>{{ group.pendingRaPcnCount.toLocaleString() }}</strong></button>
+              <button type="button" :style="pendingHeatmapStyle('pendingPpapPartCount', group.pendingPpapPartCount)" :aria-label="`Show ${group.pendingPpapPartCount} pending PPAP parts for ${group.name}`" @click="showPendingDetail(group, 'PPAP', 'part')"><small>Pending PPAP parts</small><strong>{{ group.pendingPpapPartCount.toLocaleString() }}</strong></button>
+              <button type="button" :style="pendingHeatmapStyle('pendingPpapPcnCount', group.pendingPpapPcnCount)" :aria-label="`Show ${group.pendingPpapPcnCount} pending PPAP PCNs for ${group.name}`" @click="showPendingDetail(group, 'PPAP', 'pcn')"><small>Pending PPAP PCNs</small><strong>{{ group.pendingPpapPcnCount.toLocaleString() }}</strong></button>
             </div>
           </article>
         </div>
@@ -142,5 +183,31 @@ function pendingHeatmapStyle(key: PendingMetricKey, value: number) {
     </section>
     <EmptyState v-else-if="data" title="No matching SBE" text="Try another SBE, champion, or team name."
       icon="lucide:search-x" />
+
+    <div v-if="pendingDetail" class="pending-detail-backdrop" @click.self="closePendingDetail">
+      <section class="pending-detail" role="dialog" aria-modal="true" aria-labelledby="pending-detail-title">
+        <header>
+          <div><p class="eyebrow">{{ pendingDetail.sbe1.name }}</p><h2 id="pending-detail-title">{{ pendingDetailTitle() }}</h2></div>
+          <button class="icon-button" type="button" title="Close details" aria-label="Close details" @click="closePendingDetail"><Icon name="lucide:x" /></button>
+        </header>
+        <div class="pending-detail-meta">
+          <span v-if="pendingDetailLoading"><Icon name="lucide:loader-circle" class="spin" /> Loading records…</span>
+          <span v-else-if="!pendingDetailError"><strong>{{ pendingDetail.items.length.toLocaleString() }}</strong> matching {{ pendingDetail.groupBy === 'part' ? 'parts' : 'PCNs' }}</span>
+        </div>
+        <div v-if="pendingDetailError" class="alert error">{{ pendingDetailError }}</div>
+        <div v-else-if="pendingDetailLoading" class="pending-detail-loading"><div v-for="i in 6" :key="i" class="skeleton row" /></div>
+        <div v-else-if="pendingDetail.items.length" class="table-wrap pending-detail-table">
+          <table v-if="pendingDetail.groupBy === 'part'">
+            <thead><tr><th>Part</th><th>Industry</th><th>Pending {{ pendingDetail.documentType }} PCNs</th></tr></thead>
+            <tbody><tr v-for="item in pendingDetail.items" :key="item.id"><td class="mono"><NuxtLink :to="{ path: '/parts', query: { search: item.partNumber } }" class="mono-link">{{ item.partNumber }}</NuxtLink></td><td>{{ item.industry || '—' }}</td><td><div class="pending-related-list"><NuxtLink v-for="pcn in item.pcns" :key="pcn.id" :to="`/pcns/${pcn.id}`" class="mono-link" :title="pcn.title">{{ pcn.number }}</NuxtLink></div></td></tr></tbody>
+          </table>
+          <table v-else>
+            <thead><tr><th>PCN</th><th>Notification date</th><th>Title</th><th>Pending {{ pendingDetail.documentType }} parts</th></tr></thead>
+            <tbody><tr v-for="item in pendingDetail.items" :key="item.id"><td class="mono"><NuxtLink :to="`/pcns/${item.id}`" class="mono-link">{{ item.number }}</NuxtLink></td><td>{{ item.notificationDate || '—' }}</td><td>{{ item.title || '—' }}</td><td><div class="pending-related-list"><NuxtLink v-for="part in item.parts" :key="part.id" :to="{ path: '/parts', query: { search: part.partNumber } }" class="mono-link">{{ part.partNumber }}</NuxtLink></div></td></tr></tbody>
+          </table>
+        </div>
+        <EmptyState v-else title="No pending records" :text="`No pending ${pendingDetail.documentType} ${pendingDetail.groupBy === 'part' ? 'parts' : 'PCNs'} belong to ${pendingDetail.sbe1.name}.`" icon="lucide:circle-check" />
+      </section>
+    </div>
   </div>
 </template>
