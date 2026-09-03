@@ -5,6 +5,14 @@ const { isAdmin } = useAuth()
 const savingChampionId = ref<number | null>(null)
 const message = ref('')
 const messageType = ref('success')
+const pendingMetricKeys = [
+  'pendingRaPartCount',
+  'pendingRaPcnCount',
+  'pendingPpapPartCount',
+  'pendingPpapPcnCount'
+] as const
+
+type PendingMetricKey = typeof pendingMetricKeys[number]
 
 function notify(text: string, type = 'success') {
   message.value = text
@@ -40,6 +48,22 @@ const filteredOrganizations = computed(() => {
     return sbe1.length ? [{ ...sbe, sbe1 }] : []
   })
 })
+
+const pendingMetricRanges = computed(() => Object.fromEntries(pendingMetricKeys.map((key) => {
+  const values = (data.value?.organizations || []).flatMap((sbe: any) =>
+    sbe.sbe1.map((group: any) => Number(group[key]) || 0)
+  )
+  return [key, { min: Math.min(...values), max: Math.max(...values) }]
+})))
+
+function pendingHeatmapStyle(key: PendingMetricKey, value: number) {
+  const range = pendingMetricRanges.value[key]
+  const ratio = range && range.max > range.min
+    ? (value - range.min) / (range.max - range.min)
+    : 0
+
+  return { backgroundColor: `hsl(${120 * (1 - ratio)} 72% 84%)` }
+}
 </script>
 
 <template>
@@ -107,10 +131,10 @@ const filteredOrganizations = computed(() => {
               <div v-else class="sbe2-empty">No SBE-2 mapping</div>
             </div>
             <div class="sbe1-summary">
-              <div><small>Pending RA parts</small><strong>{{ group.pendingRaPartCount.toLocaleString() }}</strong></div>
-              <div><small>Pending RA PCNs</small><strong>{{ group.pendingRaPcnCount.toLocaleString() }}</strong></div>
-              <div><small>Pending PPAP parts</small><strong>{{ group.pendingPpapPartCount.toLocaleString() }}</strong></div>
-              <div><small>Pending PPAP PCNs</small><strong>{{ group.pendingPpapPcnCount.toLocaleString() }}</strong></div>
+              <div :style="pendingHeatmapStyle('pendingRaPartCount', group.pendingRaPartCount)"><small>Pending RA parts</small><strong>{{ group.pendingRaPartCount.toLocaleString() }}</strong></div>
+              <div :style="pendingHeatmapStyle('pendingRaPcnCount', group.pendingRaPcnCount)"><small>Pending RA PCNs</small><strong>{{ group.pendingRaPcnCount.toLocaleString() }}</strong></div>
+              <div :style="pendingHeatmapStyle('pendingPpapPartCount', group.pendingPpapPartCount)"><small>Pending PPAP parts</small><strong>{{ group.pendingPpapPartCount.toLocaleString() }}</strong></div>
+              <div :style="pendingHeatmapStyle('pendingPpapPcnCount', group.pendingPpapPcnCount)"><small>Pending PPAP PCNs</small><strong>{{ group.pendingPpapPcnCount.toLocaleString() }}</strong></div>
             </div>
           </article>
         </div>

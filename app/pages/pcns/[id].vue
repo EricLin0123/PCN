@@ -21,11 +21,10 @@ const cscUploadState = computed(() => data.value?.cscUpload?.confirmed_at
 const newRa = reactive({ ra_number: '', workbook_filename: '', part_numbers: [] as string[] })
 const newPpap = reactive({ ppap_number: '', filename: '', part_numbers: [] as string[] })
 const raRequests = computed(() => {
-  if (!['MINOR', 'MAJOR', 'MAJOR_D'].includes(data.value?.pcn.expected_risk)) return []
+  if (!['MAJOR', 'MAJOR_D'].includes(data.value?.pcn.expected_risk)) return []
   const groups = new Map<string, any>()
   for (const part of data.value?.parts || []) {
-    const automotive = String(part.industry || '').trim().toLowerCase() === 'automotive'
-    if (part.has_ra || Number(part.net_revenue) <= 0 || (automotive && data.value.pcn.expected_risk === 'MINOR')) continue
+    if (part.has_ra || Number(part.net_revenue) <= 0) continue
     const key = part.sbe1_name || ''
     if (!groups.has(key)) groups.set(key, { sbe1_name: key, champion_email: part.champion_email || '', parts: [] })
     groups.get(key).parts.push(part.display_part_number)
@@ -113,10 +112,10 @@ async function deletePpap(document: any) {
   try { await $fetch(`/api/ppaps/${document.id}`, { method: 'DELETE' }); await refresh(); notify(`PPAP ${document.ppap_number} deleted.`) }
   catch (e: any) { notify(e.data?.statusMessage || 'Unable to delete PPAP.', 'error') }
 }
-async function markRequest(documentType: 'RA' | 'PPAP') {
+async function setRequest(documentType: 'RA' | 'PPAP', requested: boolean) {
   try {
-    await $fetch(`/api/pcns/${route.params.id}/document-request`, { method: 'PATCH', body: { document_type: documentType, requested: true } })
-    await refresh(); notify(`${documentType} request marked as sent to SBE-1.`)
+    await $fetch(`/api/pcns/${route.params.id}/document-request`, { method: 'PATCH', body: { document_type: documentType, requested } })
+    await refresh(); notify(requested ? `${documentType} request marked as sent to SBE-1.` : `${documentType} request status reverted.`)
   } catch (e: any) { notify(e.data?.statusMessage || 'Unable to update request status.', 'error') }
 }
 async function saveCscUpload() {
@@ -167,7 +166,7 @@ async function deleteCscUpload() {
 
       <section class="detail-grid">
         <article class="panel facts-panel"><div class="panel-heading"><div><h2>Notification facts</h2><p>Authoritative PCN metadata</p></div><Icon name="lucide:file-text" /></div>
-          <dl class="facts"><div><dt>Notification date</dt><dd>{{ data.pcn.notification_date || 'Not set' }}</dd></div><div><dt>Change type</dt><dd>{{ data.pcn.change_type || 'Unspecified' }}</dd></div><div><dt>Expected risk</dt><dd><RiskBadge :risk="data.pcn.expected_risk" /></dd></div><div><dt>Manual override</dt><dd>{{ data.pcn.risk_override || 'None' }}</dd></div><div><dt>RA status</dt><dd><StateBadge :state="data.pcn.ra_document_state" /> <button v-if="data.pcn.ra_document_state === 'NOT_REQUESTED'" class="status-action" @click="markRequest('RA')">Mark request sent</button></dd></div><div><dt>PPAP status</dt><dd><StateBadge :state="data.pcn.ppap_document_state" /> <button v-if="data.pcn.ppap_document_state === 'NOT_REQUESTED'" class="status-action" @click="markRequest('PPAP')">Mark request sent</button></dd></div><div><dt>Upload state</dt><dd><StateBadge :state="data.pcn.upload_state" /> <small class="coverage-count">{{ data.pcn.uploaded_parts }}/{{ data.pcn.delta_relevant_parts }} Delta parts</small></dd></div><div><dt>CSC verification</dt><dd><StateBadge :state="cscUploadState" /></dd></div><div><dt>Delta risk check</dt><dd><StateBadge :state="data.pcn.risk_alignment" /> <small v-if="data.pcn.delta_risks" class="coverage-count">Delta: {{ data.pcn.delta_risks }}</small></dd></div></dl>
+          <dl class="facts"><div><dt>Notification date</dt><dd>{{ data.pcn.notification_date || 'Not set' }}</dd></div><div><dt>Change type</dt><dd>{{ data.pcn.change_type || 'Unspecified' }}</dd></div><div><dt>Expected risk</dt><dd><RiskBadge :risk="data.pcn.expected_risk" /></dd></div><div><dt>Manual override</dt><dd>{{ data.pcn.risk_override || 'None' }}</dd></div><div><dt>RA status</dt><dd><StateBadge :state="data.pcn.ra_document_state" /> <button v-if="data.pcn.ra_document_state === 'NOT_REQUESTED'" class="status-action" @click="setRequest('RA', true)">Mark request sent</button><button v-else-if="data.pcn.ra_document_state === 'REQUEST_SENT'" class="status-action" @click="setRequest('RA', false)">Undo request sent</button></dd></div><div><dt>PPAP status</dt><dd><StateBadge :state="data.pcn.ppap_document_state" /> <button v-if="data.pcn.ppap_document_state === 'NOT_REQUESTED'" class="status-action" @click="setRequest('PPAP', true)">Mark request sent</button><button v-else-if="data.pcn.ppap_document_state === 'REQUEST_SENT'" class="status-action" @click="setRequest('PPAP', false)">Undo request sent</button></dd></div><div><dt>Upload state</dt><dd><StateBadge :state="data.pcn.upload_state" /> <small class="coverage-count">{{ data.pcn.uploaded_parts }}/{{ data.pcn.delta_relevant_parts }} Delta parts</small></dd></div><div><dt>CSC verification</dt><dd><StateBadge :state="cscUploadState" /></dd></div><div><dt>Delta risk check</dt><dd><StateBadge :state="data.pcn.risk_alignment" /> <small v-if="data.pcn.delta_risks" class="coverage-count">Delta: {{ data.pcn.delta_risks }}</small></dd></div></dl>
           <div v-if="data.pcn.notes" class="notes"><strong>Internal notes</strong><p>{{ data.pcn.notes }}</p></div>
         </article>
         <article class="panel parts-panel"><div class="panel-heading"><div><h2>TI affected parts</h2><p>{{ data.parts.length }} authoritative relationships · Total NR {{ formatRevenue(data.netRevenue) }}</p></div><Icon name="lucide:cpu" /></div>
@@ -195,7 +194,7 @@ async function deleteCscUpload() {
         </div>
       </section>
 
-      <section v-if="data.pcn.ppap_document_state !== 'NA' || data.ppaps.length" class="ra-section">
+      <section id="ppap-documents" v-if="data.pcn.ppap_document_state !== 'NA' || data.ppaps.length" class="ra-section">
         <div class="section-title"><div><p class="eyebrow">Automotive coverage</p><h2>PPAP documents</h2></div><span class="section-count">{{ data.ppaps.length }}</span></div>
         <form class="panel ra-add" @submit.prevent="addPpap">
           <div><label>PPAP number</label><input v-model="newPpap.ppap_number" required /></div>
@@ -220,7 +219,7 @@ async function deleteCscUpload() {
         </tbody></table></div>
       </section>
 
-      <section class="ra-section">
+      <section id="risk-assessments" class="ra-section">
         <div class="section-title"><div><p class="eyebrow">Risk coverage</p><h2>Risk assessments</h2></div><span class="section-count">{{ data.riskAssessments.length }}</span></div>
         <div v-if="raRequests.length" class="ra-request-list">
           <article v-for="request in raRequests" :key="request.sbe1_name || 'unassigned'" class="panel ra-request">

@@ -23,7 +23,7 @@ export default defineEventHandler((event) => {
   const revenueFrom = validMonth(requestedRevenueFrom) ? requestedRevenueFrom : '2025-08'
   const revenueTo = validMonth(requestedRevenueTo) ? requestedRevenueTo : '2026-09'
   if (revenueFrom > revenueTo) throw createError({ statusCode: 400, statusMessage: 'Revenue start month must not be after end month' })
-  const isRevenuePriorityQueue = ['NO_12M_SALES', 'MINOR_READY_UPLOAD', 'MAJOR_BLOCKED_RA', 'MAJOR_READY_UPLOAD'].includes(executiveState)
+  const isRevenuePriorityQueue = ['NO_12M_SALES', 'MINOR_PENDING_UPLOAD', 'MAJOR_PENDING_UPLOAD'].includes(executiveState)
   const where: string[] = []
   const params: any[] = []
   if (search) {

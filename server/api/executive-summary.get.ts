@@ -2,9 +2,8 @@ import { all, get } from '../utils/db'
 
 const definitions = [
   { key: 'NO_12M_SALES', owner: 'TI', status: 'No 12M sales', definition: 'PCN with 0 NR from Aug 2025 through today, reassigned from an upload queue', action: 'Review sales exposure', tone: 'black' },
-  { key: 'MINOR_READY_UPLOAD', owner: 'TI', status: 'Minor ready for upload', definition: 'MINOR PCN with at least one affected material pending upload', action: 'Upload to Delta', tone: 'yellow' },
-  { key: 'MAJOR_BLOCKED_RA', owner: 'TI', status: 'Major blocked by RA', definition: 'MAJOR PCN pending upload without full material-level RA coverage', action: 'Complete / Verify RA', tone: 'red' },
-  { key: 'MAJOR_READY_UPLOAD', owner: 'TI', status: 'Major ready for upload', definition: 'MAJOR PCN pending upload with full material-level RA coverage', action: 'Upload with RA', tone: 'yellow' },
+  { key: 'MINOR_PENDING_UPLOAD', owner: 'TI', status: 'Minor pending upload', definition: 'MINOR PCN with at least one affected material pending upload', action: 'Upload to Delta', tone: 'yellow' },
+  { key: 'MAJOR_PENDING_UPLOAD', owner: 'TI', status: 'Major pending upload', definition: 'MAJOR PCN with at least one affected material pending upload; document progress is tracked in the RA and PPAP columns', action: 'Complete documents and upload', tone: 'yellow' },
   { key: 'MINOR_PENDING_APPROVAL', owner: 'Delta', status: 'Minor pending approval', definition: 'Delta PROCESSING; expected TI risk MINOR', action: 'Follow up with Delta', tone: 'yellow' },
   { key: 'MAJOR_PENDING_APPROVAL', owner: 'Delta', status: 'Major pending approval', definition: 'Delta PROCESSING; expected TI risk MAJOR', action: 'Follow up with Delta', tone: 'yellow' },
   { key: 'REJECTED', owner: 'TI / Delta', status: 'Rejected – resolution required', definition: 'At least one suffix has REJECT as its latest Delta attempt', action: 'Investigate and correct', tone: 'red' },
@@ -32,13 +31,13 @@ export default defineEventHandler(() => {
     JOIN ti_part tp ON tp.id = pp.ti_part_id
     JOIN material_month_revenue mmr ON mmr.normalized_part_number = tp.normalized_part_number
       AND mmr.revenue_month BETWEEN ? AND ?
-    WHERE ex.executive_state IN ('MINOR_READY_UPLOAD', 'MAJOR_BLOCKED_RA')
+    WHERE ex.executive_state IN ('MINOR_PENDING_UPLOAD', 'MAJOR_PENDING_UPLOAD')
     GROUP BY ex.executive_state, p.id
     HAVING sum(mmr.net_revenue) > 0
     ORDER BY ex.executive_state, net_revenue DESC, p.pcn_number_base`, revenueFrom, revenueTo)
   const revenueBreakdowns: Record<string, Array<{ pcnNumber: string; netRevenue: number }>> = {
-    MINOR_READY_UPLOAD: [],
-    MAJOR_BLOCKED_RA: [],
+    MINOR_PENDING_UPLOAD: [],
+    MAJOR_PENDING_UPLOAD: [],
   }
   for (const row of revenueRows) {
     revenueBreakdowns[row.key]?.push({ pcnNumber: row.pcn_number, netRevenue: Number(row.net_revenue) })

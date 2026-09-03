@@ -15,8 +15,8 @@ const sbe1 = ref(String(route.query.sbe1 || ''))
 const executiveState = ref(String(route.query.executiveState || ''))
 const revenueFrom = ref(String(route.query.revenueFrom || '2025-08'))
 const revenueTo = ref(String(route.query.revenueTo || '2026-09'))
-const isRevenuePriorityQueue = computed(() => ['NO_12M_SALES', 'MINOR_READY_UPLOAD', 'MAJOR_BLOCKED_RA', 'MAJOR_READY_UPLOAD'].includes(executiveState.value))
-const revenueChartTitle = computed(() => executiveState.value === 'MINOR_READY_UPLOAD' ? 'Minor ready for upload' : 'Major blocked by RA')
+const isRevenuePriorityQueue = computed(() => ['NO_12M_SALES', 'MINOR_PENDING_UPLOAD', 'MAJOR_PENDING_UPLOAD'].includes(executiveState.value))
+const revenueChartTitle = computed(() => executiveState.value === 'MINOR_PENDING_UPLOAD' ? 'Minor pending upload' : 'Major pending upload')
 const exporting = ref(false)
 const exportError = ref('')
 const nrSort = ref<'asc' | 'desc' | null>(null)
@@ -134,8 +134,8 @@ function cellClass(pcn: any, key: ColumnKey) {
   if (key === 'nr') return ['numeric-cell']
   return []
 }
-async function markDocumentRequested(pcn: any, documentType: 'RA' | 'PPAP') {
-  await $fetch(`/api/pcns/${pcn.id}/document-request`, { method: 'PATCH', body: { document_type: documentType, requested: true } })
+async function setDocumentRequested(pcn: any, documentType: 'RA' | 'PPAP', requested: boolean) {
+  await $fetch(`/api/pcns/${pcn.id}/document-request`, { method: 'PATCH', body: { document_type: documentType, requested } })
   await refresh()
 }
 function applyFilters() {
@@ -246,7 +246,7 @@ async function exportToExcel() {
         <label>To <input v-model="revenueTo" type="month" @change="applyFilters()" /></label>
         <span>{{ isRevenuePriorityQueue ? 'This executive queue is ranked by affected-part NR.' : 'NR is the sum of affected-part revenue in this period.' }}</span>
       </div>
-      <div v-if="['MINOR_READY_UPLOAD', 'MAJOR_BLOCKED_RA'].includes(executiveState)" class="queue-revenue-chart">
+      <div v-if="['MINOR_PENDING_UPLOAD', 'MAJOR_PENDING_UPLOAD'].includes(executiveState)" class="queue-revenue-chart">
         <ExecutiveRevenuePie :title="revenueChartTitle" :items="revenueChartItems" @select="openRevenuePcn" />
       </div>
       <div class="table-wrap configurable-table-wrap"><table class="records-table configurable-records-table" :style="{ width: `${tableWidth}px` }">
@@ -275,8 +275,8 @@ async function exportToExcel() {
             <template v-else-if="column.key === 'changeType'">{{ pcn.change_type || 'Unspecified' }}</template>
             <span v-else-if="column.key === 'sbe1'" class="sbe1-names">{{ pcn.sbe1_names || '—' }}</span>
             <RiskBadge v-else-if="column.key === 'risk'" :risk="pcn.risk" />
-            <template v-else-if="column.key === 'ra'"><StateBadge :state="pcn.ra_document_state" /><small v-if="pcn.ra_document_state !== 'NA'" class="coverage-count">{{ pcn.document_ra_covered_parts }}/{{ pcn.ra_required_parts }} sold parts</small><button v-if="pcn.ra_document_state === 'NOT_REQUESTED'" class="status-action" type="button" @click="markDocumentRequested(pcn, 'RA')">Mark request sent</button></template>
-            <template v-else-if="column.key === 'ppap'"><StateBadge :state="pcn.ppap_document_state" /><small v-if="pcn.ppap_document_state !== 'NA'" class="coverage-count">{{ pcn.ppap_covered_parts }}/{{ pcn.ppap_required_parts }} automotive sold parts</small><button v-if="pcn.ppap_document_state === 'NOT_REQUESTED'" class="status-action" type="button" @click="markDocumentRequested(pcn, 'PPAP')">Mark request sent</button></template>
+            <template v-else-if="column.key === 'ra'"><StateBadge :state="pcn.ra_document_state" /><small v-if="pcn.ra_document_state !== 'NA'" class="coverage-count">{{ pcn.document_ra_covered_parts }}/{{ pcn.ra_required_parts }} sold parts</small><button v-if="pcn.ra_document_state === 'NOT_REQUESTED'" class="status-action" type="button" @click="setDocumentRequested(pcn, 'RA', true)">Mark request sent</button><button v-else-if="pcn.ra_document_state === 'REQUEST_SENT'" class="status-action" type="button" @click="setDocumentRequested(pcn, 'RA', false)">Undo request sent</button><NuxtLink v-else-if="pcn.ra_document_state === 'ACQUIRED'" class="status-action status-action-link" :to="`/pcns/${pcn.id}#risk-assessments`">Manage acquired RA</NuxtLink></template>
+            <template v-else-if="column.key === 'ppap'"><StateBadge :state="pcn.ppap_document_state" /><small v-if="pcn.ppap_document_state !== 'NA'" class="coverage-count">{{ pcn.ppap_covered_parts }}/{{ pcn.ppap_required_parts }} automotive sold parts</small><button v-if="pcn.ppap_document_state === 'NOT_REQUESTED'" class="status-action" type="button" @click="setDocumentRequested(pcn, 'PPAP', true)">Mark request sent</button><button v-else-if="pcn.ppap_document_state === 'REQUEST_SENT'" class="status-action" type="button" @click="setDocumentRequested(pcn, 'PPAP', false)">Undo request sent</button><NuxtLink v-else-if="pcn.ppap_document_state === 'ACQUIRED'" class="status-action status-action-link" :to="`/pcns/${pcn.id}#ppap-documents`">Manage acquired PPAP</NuxtLink></template>
             <template v-else-if="column.key === 'upload'"><StateBadge :state="pcn.upload_state" /><small class="coverage-count">{{ pcn.uploaded_parts }}/{{ pcn.delta_relevant_parts }} Delta parts</small></template>
             <template v-else-if="column.key === 'csc'"><StateBadge :state="pcn.csc_status" /><small v-if="pcn.csc_form_no" class="coverage-count">{{ pcn.csc_form_no }}</small></template>
             <template v-else-if="column.key === 'delta'"><strong v-if="pcn.delta_status !== 'BLANK'">{{ pcn.delta_status }}</strong><small v-if="pcn.statuses && pcn.statuses !== pcn.delta_status" class="coverage-count">{{ pcn.statuses }}</small></template>

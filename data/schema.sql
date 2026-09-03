@@ -483,7 +483,7 @@ SELECT
   count(DISTINCT eligible.ti_part_id) AS total_parts,
   count(DISTINCT CASE WHEN rp.ti_part_id IS NOT NULL THEN eligible.ti_part_id END) AS ra_covered_parts,
   CASE
-    WHEN expected.expected_risk NOT IN ('MINOR', 'MAJOR', 'MAJOR_D') THEN 'NA'
+    WHEN expected.expected_risk NOT IN ('MAJOR', 'MAJOR_D') THEN 'NA'
     WHEN count(DISTINCT eligible.ti_part_id) = 0 THEN 'NA'
     WHEN count(DISTINCT CASE WHEN rp.ti_part_id IS NOT NULL THEN eligible.ti_part_id END) = 0 THEN 'MISS_ALL_RA'
     WHEN count(DISTINCT CASE WHEN rp.ti_part_id IS NOT NULL THEN eligible.ti_part_id END) < count(DISTINCT eligible.ti_part_id) THEN 'PARTLY_MISS_RA'
@@ -498,8 +498,7 @@ LEFT JOIN (
   JOIN pcn_expected_risk risk ON risk.pcn_id = pp.pcn_id
   JOIN material_month_revenue revenue ON revenue.normalized_part_number = tp.normalized_part_number
   WHERE revenue.revenue_month BETWEEN strftime('%Y-%m', 'now', 'localtime', '-11 months') AND strftime('%Y-%m', 'now', 'localtime')
-    AND risk.expected_risk IN ('MINOR', 'MAJOR', 'MAJOR_D')
-    AND (lower(trim(COALESCE(tp.industry, ''))) <> 'automotive' OR risk.expected_risk IN ('MAJOR', 'MAJOR_D'))
+    AND risk.expected_risk IN ('MAJOR', 'MAJOR_D')
 ) eligible ON eligible.pcn_id = p.id
 LEFT JOIN risk_assessment ra ON ra.pcn_id = p.id
 LEFT JOIN risk_assessment_ti_part rp ON rp.risk_assessment_id = ra.id AND rp.ti_part_id = eligible.ti_part_id
@@ -516,11 +515,11 @@ WITH eligible AS (
     AND risk.expected_risk IN ('MINOR', 'MAJOR', 'MAJOR_D')
 ), coverage AS (
   SELECT p.id AS pcn_id,
-    count(DISTINCT CASE WHEN lower(trim(COALESCE(eligible.industry, ''))) <> 'automotive' OR eligible.expected_risk IN ('MAJOR', 'MAJOR_D') THEN eligible.ti_part_id END) AS ra_required_parts,
+    count(DISTINCT CASE WHEN eligible.expected_risk IN ('MAJOR', 'MAJOR_D') THEN eligible.ti_part_id END) AS ra_required_parts,
     count(DISTINCT CASE WHEN EXISTS (
       SELECT 1 FROM risk_assessment ra JOIN risk_assessment_ti_part link ON link.risk_assessment_id = ra.id
       WHERE ra.pcn_id = p.id AND link.ti_part_id = eligible.ti_part_id
-    ) AND (lower(trim(COALESCE(eligible.industry, ''))) <> 'automotive' OR eligible.expected_risk IN ('MAJOR', 'MAJOR_D')) THEN eligible.ti_part_id END) AS ra_covered_parts,
+    ) AND eligible.expected_risk IN ('MAJOR', 'MAJOR_D') THEN eligible.ti_part_id END) AS ra_covered_parts,
     count(DISTINCT CASE WHEN lower(trim(COALESCE(eligible.industry, ''))) = 'automotive' AND eligible.expected_risk <> 'MAJOR_D' THEN eligible.ti_part_id END) AS ppap_required_parts,
     count(DISTINCT CASE WHEN lower(trim(COALESCE(eligible.industry, ''))) = 'automotive' AND eligible.expected_risk <> 'MAJOR_D' AND EXISTS (
       SELECT 1 FROM ppap document JOIN ppap_ti_part link ON link.ppap_id = document.id
@@ -620,9 +619,8 @@ SELECT
         WHERE pp.pcn_id = p.id
           AND mmr.revenue_month BETWEEN '2025-08' AND strftime('%Y-%m', 'now', 'localtime')
       ), 0) = 0 THEN 'NO_12M_SALES'
-    WHEN ops.upload_state <> 'ALL_UPLOADED' AND ops.expected_risk = 'MINOR' THEN 'MINOR_READY_UPLOAD'
-    WHEN ops.upload_state <> 'ALL_UPLOADED' AND ops.expected_risk IN ('MAJOR', 'MAJOR_D') AND rac.ra_state <> 'FULL_RA' THEN 'MAJOR_BLOCKED_RA'
-    WHEN ops.upload_state <> 'ALL_UPLOADED' AND ops.expected_risk IN ('MAJOR', 'MAJOR_D') AND rac.ra_state = 'FULL_RA' THEN 'MAJOR_READY_UPLOAD'
+    WHEN ops.upload_state <> 'ALL_UPLOADED' AND ops.expected_risk = 'MINOR' THEN 'MINOR_PENDING_UPLOAD'
+    WHEN ops.upload_state <> 'ALL_UPLOADED' AND ops.expected_risk IN ('MAJOR', 'MAJOR_D') THEN 'MAJOR_PENDING_UPLOAD'
     WHEN ops.upload_state = 'ALL_UPLOADED'
       AND current_delta.delta_status = 'COMPLETE' THEN 'COMPLETED'
     ELSE 'OTHER'

@@ -104,8 +104,7 @@ export default defineEventHandler(() => {
     ), pending AS (
       SELECT eligible.*, 'RA' AS document_type FROM eligible
       JOIN pcn_expected_risk risk ON risk.pcn_id = eligible.pcn_id
-      WHERE risk.expected_risk IN ('MINOR', 'MAJOR', 'MAJOR_D')
-        AND (eligible.industry <> 'automotive' OR risk.expected_risk IN ('MAJOR', 'MAJOR_D')) AND NOT EXISTS (
+      WHERE risk.expected_risk IN ('MAJOR', 'MAJOR_D') AND NOT EXISTS (
         SELECT 1 FROM risk_assessment assessment JOIN risk_assessment_ti_part link ON link.risk_assessment_id = assessment.id
         WHERE assessment.pcn_id = eligible.pcn_id AND link.ti_part_id = eligible.ti_part_id
       )
