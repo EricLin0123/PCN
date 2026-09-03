@@ -8,6 +8,8 @@ const uploadState = ref(String(route.query.uploadState || ''))
 const cscStatus = ref(String(route.query.cscStatus || ''))
 const riskAlignment = ref(String(route.query.riskAlignment || ''))
 const raState = ref(String(route.query.raState || ''))
+const raDocumentState = ref(String(route.query.raDocumentState || ''))
+const ppapDocumentState = ref(String(route.query.ppapDocumentState || ''))
 const changeType = ref(String(route.query.changeType || ''))
 const sbe1 = ref(String(route.query.sbe1 || ''))
 const executiveState = ref(String(route.query.executiveState || ''))
@@ -18,7 +20,7 @@ const revenueChartTitle = computed(() => executiveState.value === 'MINOR_READY_U
 const exporting = ref(false)
 const exportError = ref('')
 const nrSort = ref<'asc' | 'desc' | null>(null)
-const query = computed(() => ({ search: String(route.query.search || ''), risk: String(route.query.risk || ''), status: String(route.query.status || ''), uploadState: String(route.query.uploadState || ''), cscStatus: String(route.query.cscStatus || ''), riskAlignment: String(route.query.riskAlignment || ''), raState: String(route.query.raState || ''), changeType: String(route.query.changeType || ''), sbe1: String(route.query.sbe1 || ''), executiveState: String(route.query.executiveState || ''), revenueFrom: String(route.query.revenueFrom || '2025-08'), revenueTo: String(route.query.revenueTo || '2026-09'), pageSize: 'all' }))
+const query = computed(() => ({ search: String(route.query.search || ''), risk: String(route.query.risk || ''), status: String(route.query.status || ''), uploadState: String(route.query.uploadState || ''), cscStatus: String(route.query.cscStatus || ''), riskAlignment: String(route.query.riskAlignment || ''), raState: String(route.query.raState || ''), raDocumentState: String(route.query.raDocumentState || ''), ppapDocumentState: String(route.query.ppapDocumentState || ''), changeType: String(route.query.changeType || ''), sbe1: String(route.query.sbe1 || ''), executiveState: String(route.query.executiveState || ''), revenueFrom: String(route.query.revenueFrom || '2025-08'), revenueTo: String(route.query.revenueTo || '2026-09'), pageSize: 'all' }))
 const { data, status, refresh } = await useFetch<any>('/api/pcns', { query, watch: [query] })
 const { data: changeTypes } = await useFetch<any[]>('/api/change-types')
 const sortedPcns = computed(() => {
@@ -35,16 +37,18 @@ const revenueChartItems = computed(() => (data.value?.items || [])
   .map((pcn: any) => ({ id: Number(pcn.id), pcnNumber: String(pcn.pcn_number_base), netRevenue: Number(pcn.net_revenue) })))
 let timer: ReturnType<typeof setTimeout>
 function activeFilters() {
-  return { ...(search.value && { search: search.value }), ...(changeType.value && { changeType: changeType.value }), ...(sbe1.value && { sbe1: sbe1.value }), ...(risk.value && { risk: risk.value }), ...(statusFilter.value && { status: statusFilter.value }), ...(uploadState.value && { uploadState: uploadState.value }), ...(cscStatus.value && { cscStatus: cscStatus.value }), ...(riskAlignment.value && { riskAlignment: riskAlignment.value }), ...(raState.value && { raState: raState.value }), ...(executiveState.value && { executiveState: executiveState.value }), revenueFrom: revenueFrom.value, revenueTo: revenueTo.value }
+  return { ...(search.value && { search: search.value }), ...(changeType.value && { changeType: changeType.value }), ...(sbe1.value && { sbe1: sbe1.value }), ...(risk.value && { risk: risk.value }), ...(statusFilter.value && { status: statusFilter.value }), ...(uploadState.value && { uploadState: uploadState.value }), ...(cscStatus.value && { cscStatus: cscStatus.value }), ...(riskAlignment.value && { riskAlignment: riskAlignment.value }), ...(raState.value && { raState: raState.value }), ...(raDocumentState.value && { raDocumentState: raDocumentState.value }), ...(ppapDocumentState.value && { ppapDocumentState: ppapDocumentState.value }), ...(executiveState.value && { executiveState: executiveState.value }), revenueFrom: revenueFrom.value, revenueTo: revenueTo.value }
 }
 
-type ColumnKey = 'record' | 'sbe1' | 'changeType' | 'risk' | 'upload' | 'csc' | 'delta' | 'nr' | 'alignment'
+type ColumnKey = 'record' | 'sbe1' | 'changeType' | 'risk' | 'ra' | 'ppap' | 'upload' | 'csc' | 'delta' | 'nr' | 'alignment'
 interface TableColumn { key: ColumnKey, label: string, width: number, minWidth: number }
 const defaultColumns: TableColumn[] = [
   { key: 'record', label: 'PCN / title / part / RA', width: 400, minWidth: 280 },
   { key: 'sbe1', label: 'SBE-1', width: 180, minWidth: 130 },
   { key: 'changeType', label: 'Change type', width: 210, minWidth: 140 },
   { key: 'risk', label: 'Expected risk level', width: 155, minWidth: 120 },
+  { key: 'ra', label: 'RA status', width: 190, minWidth: 155 },
+  { key: 'ppap', label: 'PPAP status', width: 190, minWidth: 155 },
   { key: 'upload', label: 'Upload state', width: 190, minWidth: 145 },
   { key: 'csc', label: 'CSC uploaded', width: 195, minWidth: 150 },
   { key: 'delta', label: 'Delta status', width: 170, minWidth: 135 },
@@ -121,12 +125,18 @@ function cycleNrSort() {
 }
 function cellClass(pcn: any, key: ColumnKey) {
   if (key === 'risk') return ['fill-cell', `fill-${pcn.risk.toLowerCase()}`]
+  if (key === 'ra') return ['fill-cell', `fill-${pcn.ra_document_state.toLowerCase().replaceAll('_', '-')}`]
+  if (key === 'ppap') return ['fill-cell', `fill-${pcn.ppap_document_state.toLowerCase().replaceAll('_', '-')}`]
   if (key === 'upload') return ['fill-cell', `fill-${pcn.upload_state.toLowerCase().replaceAll('_', '-')}`]
   if (key === 'csc') return ['fill-cell', `fill-${pcn.csc_status.toLowerCase().replaceAll('_', '-')}`]
   if (key === 'delta') return ['fill-cell', 'delta-status-cell', `fill-delta-${pcn.delta_status.toLowerCase()}`]
   if (key === 'alignment') return ['fill-cell', `fill-${pcn.risk_alignment.toLowerCase().replaceAll('_', '-')}`]
   if (key === 'nr') return ['numeric-cell']
   return []
+}
+async function markDocumentRequested(pcn: any, documentType: 'RA' | 'PPAP') {
+  await $fetch(`/api/pcns/${pcn.id}/document-request`, { method: 'PATCH', body: { document_type: documentType, requested: true } })
+  await refresh()
 }
 function applyFilters() {
   clearTimeout(timer)
@@ -143,6 +153,7 @@ const exportFill: Record<string, string> = {
   MATCH: 'FF00F04B', MISMATCH: 'FFFF008C', NOT_ON_DELTA: 'FFB8B8B8', NOT_APPLICABLE: 'FFB8B8B8',
   CSC_UPLOADED: 'FFFFFF00', CONFIRMED: 'FF00F04B',
   FULL_RA: 'FF00F04B', PARTLY_MISS_RA: 'FFFFFF00', MISS_ALL_RA: 'FFFF0000', NA: 'FFB8B8B8',
+  NOT_REQUESTED: 'FFFF0000', REQUEST_SENT: 'FFFFFF00', ACQUIRED: 'FF00F04B',
 }
 
 function displayState(value: string) {
@@ -181,6 +192,8 @@ async function exportToExcel() {
         sbe1: pcn.sbe1_names || '—',
         changeType: pcn.change_type || 'Unspecified',
         risk: displayState(pcn.risk),
+        ra: `${displayState(pcn.ra_document_state)} (${pcn.document_ra_covered_parts}/${pcn.ra_required_parts})`,
+        ppap: `${displayState(pcn.ppap_document_state)} (${pcn.ppap_covered_parts}/${pcn.ppap_required_parts})`,
         upload: `${displayState(pcn.upload_state)} (${pcn.uploaded_parts}/${pcn.delta_relevant_parts})`,
         csc: `${displayState(pcn.csc_status)}${pcn.csc_form_no ? ` · ${pcn.csc_form_no}` : ''}`,
         delta: `${displayState(pcn.delta_status)}${pcn.statuses && pcn.statuses !== pcn.delta_status ? ` · ${pcn.statuses}` : ''}`,
@@ -189,7 +202,7 @@ async function exportToExcel() {
       })
       row.getCell(columns.value.findIndex(column => column.key === 'record') + 1).numFmt = '@'
       row.getCell(columns.value.findIndex(column => column.key === 'nr') + 1).numFmt = '#,##0.00'
-      for (const [key, state] of [['risk', pcn.risk], ['upload', pcn.upload_state], ['csc', pcn.csc_status], ['delta', pcn.delta_status], ['alignment', pcn.risk_alignment]] as const) {
+      for (const [key, state] of [['risk', pcn.risk], ['ra', pcn.ra_document_state], ['ppap', pcn.ppap_document_state], ['upload', pcn.upload_state], ['csc', pcn.csc_status], ['delta', pcn.delta_status], ['alignment', pcn.risk_alignment]] as const) {
         const cell = row.getCell(columns.value.findIndex(column => column.key === key) + 1)
         cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: exportFill[state] || 'FFFFFFFF' } }
         cell.font = { bold: true, color: { argb: ['MAJOR', 'MAJOR_D', 'REJECT', 'CANCEL', 'MISMATCH', 'MISS_ALL_RA'].includes(state) ? 'FFFFFFFF' : 'FF000000' } }
@@ -246,6 +259,8 @@ async function exportToExcel() {
             <select v-else-if="column.key === 'sbe1'" v-model="sbe1" class="column-filter" @dragstart.prevent @change="applyFilters()"><option value="">(All)</option><option v-for="name in data?.sbe1Options || []" :key="name" :value="name">{{ name }}</option></select>
             <select v-else-if="column.key === 'changeType'" v-model="changeType" class="column-filter" @dragstart.prevent @change="applyFilters()"><option value="">(All)</option><option v-for="type in changeTypes" :key="type.id" :value="type.name">{{ type.name }}</option></select>
             <select v-else-if="column.key === 'risk'" v-model="risk" class="column-filter" @dragstart.prevent @change="applyFilters()"><option value="">(All)</option><option>MAJOR</option><option>MAJOR_D</option><option>MINOR</option><option>EOL</option><option>UNKNOWN</option></select>
+            <select v-else-if="column.key === 'ra'" v-model="raDocumentState" class="column-filter" @dragstart.prevent @change="applyFilters()"><option value="">(All)</option><option value="NOT_REQUESTED">Not requested</option><option value="REQUEST_SENT">Request sent</option><option value="ACQUIRED">Acquired</option><option value="NA">NA</option></select>
+            <select v-else-if="column.key === 'ppap'" v-model="ppapDocumentState" class="column-filter" @dragstart.prevent @change="applyFilters()"><option value="">(All)</option><option value="NOT_REQUESTED">Not requested</option><option value="REQUEST_SENT">Request sent</option><option value="ACQUIRED">Acquired</option><option value="NA">NA</option></select>
             <select v-else-if="column.key === 'upload'" v-model="uploadState" class="column-filter" @dragstart.prevent @change="applyFilters()"><option value="">(All)</option><option value="ALL_UPLOADED">All uploaded</option><option value="PARTLY_UPLOADED">Partly uploaded</option><option value="NOT_UPLOADED">Not uploaded</option></select>
             <select v-else-if="column.key === 'csc'" v-model="cscStatus" class="column-filter" @dragstart.prevent @change="applyFilters()"><option value="">(All)</option><option value="NA">NA</option><option value="NOT_UPLOADED">Not uploaded</option><option value="CSC_UPLOADED">CSC uploaded</option><option value="CONFIRMED">Confirmed uploaded</option></select>
             <select v-else-if="column.key === 'delta'" v-model="statusFilter" class="column-filter" @dragstart.prevent @change="applyFilters()"><option value="">(All)</option><option>CANCEL</option><option>PROCESSING</option><option>REJECT</option><option>COMPLETE</option><option>MIXED</option><option value="BLANK">Blank</option></select>
@@ -260,6 +275,8 @@ async function exportToExcel() {
             <template v-else-if="column.key === 'changeType'">{{ pcn.change_type || 'Unspecified' }}</template>
             <span v-else-if="column.key === 'sbe1'" class="sbe1-names">{{ pcn.sbe1_names || '—' }}</span>
             <RiskBadge v-else-if="column.key === 'risk'" :risk="pcn.risk" />
+            <template v-else-if="column.key === 'ra'"><StateBadge :state="pcn.ra_document_state" /><small v-if="pcn.ra_document_state !== 'NA'" class="coverage-count">{{ pcn.document_ra_covered_parts }}/{{ pcn.ra_required_parts }} sold parts</small><button v-if="pcn.ra_document_state === 'NOT_REQUESTED'" class="status-action" type="button" @click="markDocumentRequested(pcn, 'RA')">Mark request sent</button></template>
+            <template v-else-if="column.key === 'ppap'"><StateBadge :state="pcn.ppap_document_state" /><small v-if="pcn.ppap_document_state !== 'NA'" class="coverage-count">{{ pcn.ppap_covered_parts }}/{{ pcn.ppap_required_parts }} automotive sold parts</small><button v-if="pcn.ppap_document_state === 'NOT_REQUESTED'" class="status-action" type="button" @click="markDocumentRequested(pcn, 'PPAP')">Mark request sent</button></template>
             <template v-else-if="column.key === 'upload'"><StateBadge :state="pcn.upload_state" /><small class="coverage-count">{{ pcn.uploaded_parts }}/{{ pcn.delta_relevant_parts }} Delta parts</small></template>
             <template v-else-if="column.key === 'csc'"><StateBadge :state="pcn.csc_status" /><small v-if="pcn.csc_form_no" class="coverage-count">{{ pcn.csc_form_no }}</small></template>
             <template v-else-if="column.key === 'delta'"><strong v-if="pcn.delta_status !== 'BLANK'">{{ pcn.delta_status }}</strong><small v-if="pcn.statuses && pcn.statuses !== pcn.delta_status" class="coverage-count">{{ pcn.statuses }}</small></template>

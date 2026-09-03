@@ -12,6 +12,8 @@ export default defineEventHandler((event) => {
   const cscStatus = String(query.cscStatus || '').trim().toUpperCase()
   const riskAlignment = String(query.riskAlignment || '').trim().toUpperCase()
   const raState = String(query.raState || '').trim().toUpperCase()
+  const raDocumentState = String(query.raDocumentState || '').trim().toUpperCase()
+  const ppapDocumentState = String(query.ppapDocumentState || '').trim().toUpperCase()
   const changeType = String(query.changeType || '').trim()
   const sbe1 = String(query.sbe1 || '').trim()
   const executiveState = String(query.executiveState || '').trim().toUpperCase()
@@ -74,12 +76,14 @@ export default defineEventHandler((event) => {
     where.push('rac.ra_state = ?')
     params.push(raState)
   }
+  if (raDocumentState) { where.push('documents.ra_document_state = ?'); params.push(raDocumentState) }
+  if (ppapDocumentState) { where.push('documents.ppap_document_state = ?'); params.push(ppapDocumentState) }
   if (executiveState) {
     where.push('ex.executive_state = ?')
     params.push(executiveState)
   }
   const clause = where.length ? `WHERE ${where.join(' AND ')}` : ''
-  const total = get<{ count: number }>(`SELECT count(*) AS count FROM pcn p LEFT JOIN change_type ct ON ct.id = p.change_type_id JOIN pcn_operational_status ops ON ops.pcn_id = p.id JOIN pcn_ra_coverage rac ON rac.pcn_id = p.id JOIN pcn_executive_status ex ON ex.pcn_id = p.id JOIN pcn_delta_status pds ON pds.pcn_id = p.id LEFT JOIN pcn_csc_upload cu ON cu.pcn_id = p.id ${clause}`, ...params)?.count || 0
+  const total = get<{ count: number }>(`SELECT count(*) AS count FROM pcn p LEFT JOIN change_type ct ON ct.id = p.change_type_id JOIN pcn_operational_status ops ON ops.pcn_id = p.id JOIN pcn_ra_coverage rac ON rac.pcn_id = p.id JOIN pcn_document_status documents ON documents.pcn_id = p.id JOIN pcn_executive_status ex ON ex.pcn_id = p.id JOIN pcn_delta_status pds ON pds.pcn_id = p.id LEFT JOIN pcn_csc_upload cu ON cu.pcn_id = p.id ${clause}`, ...params)?.count || 0
   const items = all(`SELECT p.id, p.pcn_number_base, p.notification_date, p.title,
       ct.name AS change_type, ops.expected_risk AS risk,
       (SELECT count(*) FROM pcn_ti_part pp WHERE pp.pcn_id = p.id) AS part_count,
@@ -161,6 +165,8 @@ export default defineEventHandler((event) => {
       cu.apply_date AS csc_apply_date, cu.form_no AS csc_form_no, cu.pcn_no AS csc_pcn_no,
       ops.total_parts, ops.delta_relevant_parts, ops.uploaded_parts, ops.upload_state, ops.delta_risks, ops.risk_alignment,
       rac.ra_covered_parts, rac.ra_state,
+      documents.ra_required_parts, documents.ra_covered_parts AS document_ra_covered_parts, documents.ra_document_state,
+      documents.ppap_required_parts, documents.ppap_covered_parts, documents.ppap_document_state,
       COALESCE((
         SELECT sum(mmr.net_revenue)
         FROM pcn_ti_part revenue_pp
@@ -171,6 +177,7 @@ export default defineEventHandler((event) => {
     FROM pcn p LEFT JOIN change_type ct ON ct.id = p.change_type_id
     JOIN pcn_operational_status ops ON ops.pcn_id = p.id
     JOIN pcn_ra_coverage rac ON rac.pcn_id = p.id
+    JOIN pcn_document_status documents ON documents.pcn_id = p.id
     JOIN pcn_executive_status ex ON ex.pcn_id = p.id
     JOIN pcn_delta_status pds ON pds.pcn_id = p.id
     LEFT JOIN pcn_csc_upload cu ON cu.pcn_id = p.id ${clause}

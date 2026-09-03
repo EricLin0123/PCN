@@ -13,9 +13,12 @@ export default defineEventHandler((event) => {
       ct.name AS change_type, ct.default_risk, p.risk_override,
       ops.expected_risk,
       p.notes, p.created_at, p.updated_at, ops.total_parts, ops.delta_relevant_parts, ops.uploaded_parts,
-      ops.upload_state, ops.delta_risks, ops.risk_alignment
+      ops.upload_state, ops.delta_risks, ops.risk_alignment,
+      documents.ra_required_parts, documents.ra_covered_parts, documents.ra_document_state,
+      documents.ppap_required_parts, documents.ppap_covered_parts, documents.ppap_document_state
     FROM pcn p LEFT JOIN change_type ct ON ct.id = p.change_type_id
-    JOIN pcn_operational_status ops ON ops.pcn_id = p.id WHERE p.id = ?`, id)
+    JOIN pcn_operational_status ops ON ops.pcn_id = p.id
+    JOIN pcn_document_status documents ON documents.pcn_id = p.id WHERE p.id = ?`, id)
   if (!pcn) throw createError({ statusCode: 404, statusMessage: 'PCN not found' })
   const parts = all<any>(`SELECT tp.id, tp.display_part_number, tp.normalized_part_number, tp.industry,
       sbe.name AS sbe_name, sbe1.name AS sbe1_name, sbe2.name AS sbe2_name, sbe1.champion_email,
@@ -46,6 +49,10 @@ export default defineEventHandler((event) => {
         JOIN risk_assessment_ti_part rp ON rp.risk_assessment_id = ra.id
         WHERE ra.pcn_id = p.id AND rp.ti_part_id = tp.id
       ) AS has_ra,
+      EXISTS (
+        SELECT 1 FROM ppap document JOIN ppap_ti_part link ON link.ppap_id = document.id
+        WHERE document.pcn_id = p.id AND link.ti_part_id = tp.id
+      ) AS has_ppap,
       COALESCE((
         SELECT sum(mmr.net_revenue)
         FROM material_month_revenue mmr
@@ -75,6 +82,13 @@ export default defineEventHandler((event) => {
       FROM risk_assessment_ti_part rp JOIN ti_part tp ON tp.id = rp.ti_part_id
       WHERE rp.risk_assessment_id = ? ORDER BY tp.normalized_part_number`, assessment.id)
   }
+  const ppaps = all<any>(`SELECT id, ppap_number, filename, created_at, updated_at
+    FROM ppap WHERE pcn_id = ? ORDER BY ppap_number`, id)
+  for (const document of ppaps) {
+    document.parts = all(`SELECT tp.id, tp.display_part_number, tp.normalized_part_number
+      FROM ppap_ti_part link JOIN ti_part tp ON tp.id = link.ti_part_id
+      WHERE link.ppap_id = ? ORDER BY tp.normalized_part_number`, document.id)
+  }
   const netRevenue = parts.reduce((sum: number, part: any) => sum + Number(part.net_revenue || 0), 0)
   const cscUpload = get<any>(`SELECT cu.pcn_id, cu.apply_date, cu.form_no, cu.pcn_no,
       cu.uploaded_at, cu.confirmed_at, uploader.username AS uploaded_by,
@@ -83,5 +97,5 @@ export default defineEventHandler((event) => {
     LEFT JOIN app_user uploader ON uploader.id = cu.uploaded_by_user_id
     LEFT JOIN app_user confirmer ON confirmer.id = cu.confirmed_by_user_id
     WHERE cu.pcn_id = ?`, id)
-  return { pcn, parts, riskAssessments, forms, cscUpload: cscUpload || null, revenueFrom, revenueTo, netRevenue }
+  return { pcn, parts, riskAssessments, ppaps, forms, cscUpload: cscUpload || null, revenueFrom, revenueTo, netRevenue }
 })

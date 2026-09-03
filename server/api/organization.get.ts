@@ -11,6 +11,8 @@ interface OrganizationRow {
   part_count: number
   pending_ra_part_count: number
   pending_ra_pcn_count: number
+  pending_ppap_part_count: number
+  pending_ppap_pcn_count: number
 }
 
 interface Sbe2Node {
@@ -26,6 +28,8 @@ interface Sbe1Node {
   partCount: number
   pendingRaPartCount: number
   pendingRaPcnCount: number
+  pendingPpapPartCount: number
+  pendingPpapPcnCount: number
   sbe2: Sbe2Node[]
 }
 
@@ -46,20 +50,14 @@ export default defineEventHandler(() => {
       sbe2.id AS sbe2_id,
       sbe2.name AS sbe2_name,
       count(DISTINCT organization.ti_part_id) AS part_count,
-      count(DISTINCT CASE WHEN executive.executive_state = 'MAJOR_BLOCKED_RA'
-        AND NOT EXISTS (
-          SELECT 1 FROM risk_assessment_ti_part covered
-          JOIN risk_assessment assessment ON assessment.id = covered.risk_assessment_id
-          WHERE assessment.pcn_id = pcn.id AND covered.ti_part_id = organization.ti_part_id
-        ) THEN organization.ti_part_id END) AS pending_ra_part_count,
-      0 AS pending_ra_pcn_count
+      0 AS pending_ra_part_count, 0 AS pending_ra_pcn_count,
+      0 AS pending_ppap_part_count, 0 AS pending_ppap_pcn_count
     FROM ti_part_organization organization
     JOIN sbe ON sbe.id = organization.sbe_id
     JOIN sbe1 ON sbe1.id = organization.sbe1_id
     JOIN sbe2 ON sbe2.id = organization.sbe2_id
     LEFT JOIN pcn_ti_part ON pcn_ti_part.ti_part_id = organization.ti_part_id
     LEFT JOIN pcn ON pcn.id = pcn_ti_part.pcn_id
-    LEFT JOIN pcn_executive_status executive ON executive.pcn_id = pcn.id
     GROUP BY sbe.id, sbe1.id, sbe2.id
     ORDER BY sbe.name, sbe1.name, sbe2.name`)
 
@@ -80,6 +78,8 @@ export default defineEventHandler(() => {
         partCount: 0,
         pendingRaPartCount: 0,
         pendingRaPcnCount: 0,
+        pendingPpapPartCount: 0,
+        pendingPpapPcnCount: 0,
         sbe2: []
       }
       sbe1Nodes.set(sbe1Key, node)
@@ -93,28 +93,42 @@ export default defineEventHandler(() => {
     sbe.partCount += partCount
   }
 
-  const pendingRaPcnCounts = all<{ sbe1_id: number, pending_ra_pcn_count: number }>(`SELECT
-      organization.sbe1_id,
-      count(DISTINCT pcn.id) AS pending_ra_pcn_count
-    FROM ti_part_organization organization
-    JOIN pcn_ti_part ON pcn_ti_part.ti_part_id = organization.ti_part_id
-    JOIN pcn ON pcn.id = pcn_ti_part.pcn_id
-    JOIN pcn_executive_status executive ON executive.pcn_id = pcn.id
-    WHERE executive.executive_state = 'MAJOR_BLOCKED_RA'
-      AND EXISTS (
-        SELECT 1 FROM pcn_ti_part missing
-        WHERE missing.pcn_id = pcn.id
-          AND NOT EXISTS (
-            SELECT 1 FROM risk_assessment_ti_part covered
-            JOIN risk_assessment assessment ON assessment.id = covered.risk_assessment_id
-            WHERE assessment.pcn_id = pcn.id AND covered.ti_part_id = missing.ti_part_id
-          )
-          AND missing.ti_part_id = organization.ti_part_id
+  const pendingCounts = all<{ sbe1_id: number, document_type: string, part_count: number, pcn_count: number }>(`
+    WITH eligible AS (
+      SELECT DISTINCT affected.pcn_id, affected.ti_part_id, organization.sbe1_id, lower(trim(COALESCE(part.industry, ''))) AS industry
+      FROM pcn_ti_part affected
+      JOIN ti_part part ON part.id = affected.ti_part_id
+      JOIN ti_part_organization organization ON organization.ti_part_id = part.id
+      JOIN material_month_revenue revenue ON revenue.normalized_part_number = part.normalized_part_number
+      WHERE revenue.revenue_month BETWEEN strftime('%Y-%m', 'now', 'localtime', '-11 months') AND strftime('%Y-%m', 'now', 'localtime')
+    ), pending AS (
+      SELECT eligible.*, 'RA' AS document_type FROM eligible
+      JOIN pcn_expected_risk risk ON risk.pcn_id = eligible.pcn_id
+      WHERE risk.expected_risk IN ('MINOR', 'MAJOR', 'MAJOR_D')
+        AND (eligible.industry <> 'automotive' OR risk.expected_risk = 'MAJOR_D') AND NOT EXISTS (
+        SELECT 1 FROM risk_assessment assessment JOIN risk_assessment_ti_part link ON link.risk_assessment_id = assessment.id
+        WHERE assessment.pcn_id = eligible.pcn_id AND link.ti_part_id = eligible.ti_part_id
       )
-    GROUP BY organization.sbe1_id`)
-  for (const row of pendingRaPcnCounts) {
+      UNION ALL
+      SELECT eligible.*, 'PPAP' AS document_type FROM eligible
+      JOIN pcn_expected_risk risk ON risk.pcn_id = eligible.pcn_id
+      WHERE risk.expected_risk IN ('MINOR', 'MAJOR') AND eligible.industry = 'automotive' AND NOT EXISTS (
+        SELECT 1 FROM ppap document JOIN ppap_ti_part link ON link.ppap_id = document.id
+        WHERE document.pcn_id = eligible.pcn_id AND link.ti_part_id = eligible.ti_part_id
+      )
+    )
+    SELECT sbe1_id, document_type, count(DISTINCT ti_part_id) AS part_count, count(DISTINCT pcn_id) AS pcn_count
+    FROM pending GROUP BY sbe1_id, document_type`)
+  for (const row of pendingCounts) {
     for (const node of sbe1Nodes.values()) {
-      if (node.id === row.sbe1_id) node.pendingRaPcnCount = Number(row.pending_ra_pcn_count)
+      if (node.id !== row.sbe1_id) continue
+      if (row.document_type === 'RA') {
+        node.pendingRaPartCount = Number(row.part_count)
+        node.pendingRaPcnCount = Number(row.pcn_count)
+      } else {
+        node.pendingPpapPartCount = Number(row.part_count)
+        node.pendingPpapPcnCount = Number(row.pcn_count)
+      }
     }
   }
 
@@ -139,6 +153,8 @@ export default defineEventHandler(() => {
         partCount: 0,
         pendingRaPartCount: 0,
         pendingRaPcnCount: 0,
+        pendingPpapPartCount: 0,
+        pendingPpapPcnCount: 0,
         sbe2: []
       }))
     })

@@ -109,6 +109,8 @@ const filteredOrganizations = computed(() => {
             <div class="sbe1-summary">
               <div><small>Pending RA parts</small><strong>{{ group.pendingRaPartCount.toLocaleString() }}</strong></div>
               <div><small>Pending RA PCNs</small><strong>{{ group.pendingRaPcnCount.toLocaleString() }}</strong></div>
+              <div><small>Pending PPAP parts</small><strong>{{ group.pendingPpapPartCount.toLocaleString() }}</strong></div>
+              <div><small>Pending PPAP PCNs</small><strong>{{ group.pendingPpapPcnCount.toLocaleString() }}</strong></div>
             </div>
           </article>
         </div>

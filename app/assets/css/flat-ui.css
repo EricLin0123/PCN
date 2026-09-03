@@ -818,6 +818,12 @@ td.fill-ra-full-ra {
   background: #00ed4b !important;
 }
 
+td.fill-not-requested { color: #fff; background: #f00000 !important; }
+td.fill-request-sent { color: #000; background: #fff000 !important; }
+td.fill-acquired { color: #000; background: #00ed4b !important; }
+td.fill-na { color: #fff; background: #000 !important; }
+.status-action { display: block; margin-top: 6px; border: 1px solid currentColor; background: transparent; color: inherit; padding: 3px 6px; font-size: 9px; font-weight: 800; cursor: pointer; }
+
 .delta-status-cell > strong {
   font-size: 10px;
   letter-spacing: .04em;

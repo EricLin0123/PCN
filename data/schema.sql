@@ -240,6 +240,31 @@ CREATE TABLE IF NOT EXISTS risk_assessment_ti_part (
   PRIMARY KEY (risk_assessment_id, ti_part_id)
 );
 
+-- PPAP packages, like RAs, may cover more than one affected TI part.
+CREATE TABLE IF NOT EXISTS ppap (
+  id INTEGER PRIMARY KEY,
+  ppap_number TEXT NOT NULL UNIQUE,
+  pcn_id INTEGER NOT NULL REFERENCES pcn(id) ON DELETE CASCADE,
+  filename TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS ppap_ti_part (
+  ppap_id INTEGER NOT NULL REFERENCES ppap(id) ON DELETE CASCADE,
+  ti_part_id INTEGER NOT NULL REFERENCES ti_part(id),
+  PRIMARY KEY (ppap_id, ti_part_id)
+);
+
+-- Request tracking is deliberately separate from document coverage. Coverage
+-- remains derived from the actual document-to-part mappings below.
+CREATE TABLE IF NOT EXISTS pcn_document_request (
+  pcn_id INTEGER NOT NULL REFERENCES pcn(id) ON DELETE CASCADE,
+  document_type TEXT NOT NULL CHECK (document_type IN ('RA', 'PPAP')),
+  requested_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (pcn_id, document_type)
+);
+
 CREATE INDEX IF NOT EXISTS idx_pcn_date ON pcn(notification_date DESC);
 CREATE INDEX IF NOT EXISTS idx_pcn_change_type ON pcn(change_type_id);
 CREATE INDEX IF NOT EXISTS idx_pcn_ti_part_part ON pcn_ti_part(ti_part_id);
@@ -288,6 +313,8 @@ CREATE INDEX IF NOT EXISTS idx_delta_item_form ON delta_form_item(delta_form_id)
 CREATE INDEX IF NOT EXISTS idx_delta_item_ti_part ON delta_form_item(ti_part_number_normalized);
 CREATE INDEX IF NOT EXISTS idx_risk_assessment_pcn ON risk_assessment(pcn_id);
 CREATE INDEX IF NOT EXISTS idx_ra_ti_part_part ON risk_assessment_ti_part(ti_part_id);
+CREATE INDEX IF NOT EXISTS idx_ppap_pcn ON ppap(pcn_id);
+CREATE INDEX IF NOT EXISTS idx_ppap_ti_part_part ON ppap_ti_part(ti_part_id);
 
 CREATE TRIGGER IF NOT EXISTS enforce_ra_part_belongs_to_pcn
 BEFORE INSERT ON risk_assessment_ti_part
@@ -313,10 +340,33 @@ BEGIN
   SELECT RAISE(ABORT, 'TI part is covered by a risk assessment');
 END;
 
+CREATE TRIGGER IF NOT EXISTS enforce_ppap_part_belongs_to_pcn
+BEFORE INSERT ON ppap_ti_part
+WHEN NOT EXISTS (
+  SELECT 1 FROM ppap document
+  JOIN pcn_ti_part affected ON affected.pcn_id = document.pcn_id
+  WHERE document.id = NEW.ppap_id AND affected.ti_part_id = NEW.ti_part_id
+)
+BEGIN
+  SELECT RAISE(ABORT, 'PPAP part must be an authoritative TI affected part for its PCN');
+END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_removing_ppap_covered_part
+BEFORE DELETE ON pcn_ti_part
+WHEN EXISTS (
+  SELECT 1 FROM ppap document
+  JOIN ppap_ti_part covered ON covered.ppap_id = document.id
+  WHERE document.pcn_id = OLD.pcn_id AND covered.ti_part_id = OLD.ti_part_id
+)
+BEGIN
+  SELECT RAISE(ABORT, 'TI part is covered by a PPAP');
+END;
+
 -- Upload coverage applies only to TI parts with a known Delta material mapping.
 -- Authoritative TI parts that have never been sold to Delta remain visible, but
 -- do not prevent the PCN from being considered fully uploaded.
 DROP VIEW IF EXISTS pcn_executive_status;
+DROP VIEW IF EXISTS pcn_document_status;
 DROP VIEW IF EXISTS pcn_ra_coverage;
 DROP VIEW IF EXISTS pcn_operational_status;
 DROP VIEW IF EXISTS pcn_upload_coverage;
@@ -430,21 +480,70 @@ JOIN pcn_upload_coverage coverage ON coverage.pcn_id = p.id;
 CREATE VIEW pcn_ra_coverage AS
 SELECT
   p.id AS pcn_id,
-  coverage.total_parts,
-  count(DISTINCT rp.ti_part_id) AS ra_covered_parts,
+  count(DISTINCT eligible.ti_part_id) AS total_parts,
+  count(DISTINCT CASE WHEN rp.ti_part_id IS NOT NULL THEN eligible.ti_part_id END) AS ra_covered_parts,
   CASE
-    WHEN expected.expected_risk NOT IN ('MAJOR', 'MAJOR_D') THEN 'NA'
-    WHEN count(DISTINCT rp.ti_part_id) = 0 THEN 'MISS_ALL_RA'
-    WHEN count(DISTINCT rp.ti_part_id) < coverage.total_parts THEN 'PARTLY_MISS_RA'
+    WHEN expected.expected_risk NOT IN ('MINOR', 'MAJOR', 'MAJOR_D') THEN 'NA'
+    WHEN count(DISTINCT eligible.ti_part_id) = 0 THEN 'NA'
+    WHEN count(DISTINCT CASE WHEN rp.ti_part_id IS NOT NULL THEN eligible.ti_part_id END) = 0 THEN 'MISS_ALL_RA'
+    WHEN count(DISTINCT CASE WHEN rp.ti_part_id IS NOT NULL THEN eligible.ti_part_id END) < count(DISTINCT eligible.ti_part_id) THEN 'PARTLY_MISS_RA'
     ELSE 'FULL_RA'
   END AS ra_state
 FROM pcn p
-LEFT JOIN change_type ct ON ct.id = p.change_type_id
 JOIN pcn_expected_risk expected ON expected.pcn_id = p.id
-JOIN pcn_upload_coverage coverage ON coverage.pcn_id = p.id
+LEFT JOIN (
+  SELECT DISTINCT pp.pcn_id, pp.ti_part_id
+  FROM pcn_ti_part pp
+  JOIN ti_part tp ON tp.id = pp.ti_part_id
+  JOIN pcn_expected_risk risk ON risk.pcn_id = pp.pcn_id
+  JOIN material_month_revenue revenue ON revenue.normalized_part_number = tp.normalized_part_number
+  WHERE revenue.revenue_month BETWEEN strftime('%Y-%m', 'now', 'localtime', '-11 months') AND strftime('%Y-%m', 'now', 'localtime')
+    AND risk.expected_risk IN ('MINOR', 'MAJOR', 'MAJOR_D')
+    AND (lower(trim(COALESCE(tp.industry, ''))) <> 'automotive' OR risk.expected_risk = 'MAJOR_D')
+) eligible ON eligible.pcn_id = p.id
 LEFT JOIN risk_assessment ra ON ra.pcn_id = p.id
-LEFT JOIN risk_assessment_ti_part rp ON rp.risk_assessment_id = ra.id
+LEFT JOIN risk_assessment_ti_part rp ON rp.risk_assessment_id = ra.id AND rp.ti_part_id = eligible.ti_part_id
 GROUP BY p.id;
+
+CREATE VIEW pcn_document_status AS
+WITH eligible AS (
+  SELECT DISTINCT pp.pcn_id, pp.ti_part_id, tp.industry, risk.expected_risk
+  FROM pcn_ti_part pp
+  JOIN ti_part tp ON tp.id = pp.ti_part_id
+  JOIN pcn_expected_risk risk ON risk.pcn_id = pp.pcn_id
+  JOIN material_month_revenue revenue ON revenue.normalized_part_number = tp.normalized_part_number
+  WHERE revenue.revenue_month BETWEEN strftime('%Y-%m', 'now', 'localtime', '-11 months') AND strftime('%Y-%m', 'now', 'localtime')
+    AND risk.expected_risk IN ('MINOR', 'MAJOR', 'MAJOR_D')
+), coverage AS (
+  SELECT p.id AS pcn_id,
+    count(DISTINCT CASE WHEN lower(trim(COALESCE(eligible.industry, ''))) <> 'automotive' OR eligible.expected_risk = 'MAJOR_D' THEN eligible.ti_part_id END) AS ra_required_parts,
+    count(DISTINCT CASE WHEN EXISTS (
+      SELECT 1 FROM risk_assessment ra JOIN risk_assessment_ti_part link ON link.risk_assessment_id = ra.id
+      WHERE ra.pcn_id = p.id AND link.ti_part_id = eligible.ti_part_id
+    ) AND (lower(trim(COALESCE(eligible.industry, ''))) <> 'automotive' OR eligible.expected_risk = 'MAJOR_D') THEN eligible.ti_part_id END) AS ra_covered_parts,
+    count(DISTINCT CASE WHEN lower(trim(COALESCE(eligible.industry, ''))) = 'automotive' AND eligible.expected_risk <> 'MAJOR_D' THEN eligible.ti_part_id END) AS ppap_required_parts,
+    count(DISTINCT CASE WHEN lower(trim(COALESCE(eligible.industry, ''))) = 'automotive' AND eligible.expected_risk <> 'MAJOR_D' AND EXISTS (
+      SELECT 1 FROM ppap document JOIN ppap_ti_part link ON link.ppap_id = document.id
+      WHERE document.pcn_id = p.id AND link.ti_part_id = eligible.ti_part_id
+    ) THEN eligible.ti_part_id END) AS ppap_covered_parts
+  FROM pcn p LEFT JOIN eligible ON eligible.pcn_id = p.id GROUP BY p.id
+)
+SELECT p.id AS pcn_id, coverage.ra_required_parts, coverage.ra_covered_parts,
+  coverage.ppap_required_parts, coverage.ppap_covered_parts,
+  CASE
+    WHEN coverage.ra_required_parts = 0 THEN 'NA'
+    WHEN coverage.ra_covered_parts = coverage.ra_required_parts THEN 'ACQUIRED'
+    WHEN EXISTS (SELECT 1 FROM pcn_document_request request WHERE request.pcn_id = p.id AND request.document_type = 'RA') THEN 'REQUEST_SENT'
+    ELSE 'NOT_REQUESTED'
+  END AS ra_document_state,
+  CASE
+    WHEN expected.expected_risk = 'MAJOR_D' OR coverage.ppap_required_parts = 0 THEN 'NA'
+    WHEN coverage.ppap_covered_parts = coverage.ppap_required_parts THEN 'ACQUIRED'
+    WHEN EXISTS (SELECT 1 FROM pcn_document_request request WHERE request.pcn_id = p.id AND request.document_type = 'PPAP') THEN 'REQUEST_SENT'
+    ELSE 'NOT_REQUESTED'
+  END AS ppap_document_state
+FROM pcn p JOIN pcn_expected_risk expected ON expected.pcn_id = p.id
+JOIN coverage ON coverage.pcn_id = p.id;
 
 -- Delta permits repeated submissions under the same PCN suffix. The latest
 -- attempt for each suffix is authoritative; older attempts remain as history.
