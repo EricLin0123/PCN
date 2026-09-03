@@ -25,7 +25,7 @@ const raRequests = computed(() => {
   const groups = new Map<string, any>()
   for (const part of data.value?.parts || []) {
     const automotive = String(part.industry || '').trim().toLowerCase() === 'automotive'
-    if (part.has_ra || Number(part.net_revenue) <= 0 || (automotive && data.value.pcn.expected_risk !== 'MAJOR_D')) continue
+    if (part.has_ra || Number(part.net_revenue) <= 0 || (automotive && data.value.pcn.expected_risk === 'MINOR')) continue
     const key = part.sbe1_name || ''
     if (!groups.has(key)) groups.set(key, { sbe1_name: key, champion_email: part.champion_email || '', parts: [] })
     groups.get(key).parts.push(part.display_part_number)
