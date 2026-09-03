@@ -100,6 +100,20 @@ successfully during launch.
 
 ## Deploy an application update
 
+The repeatable deployment pipeline is checked in at
+[`scripts/deploy-aws.sh`](../scripts/deploy-aws.sh). From the repository, run:
+
+```bash
+./scripts/deploy-aws.sh "Describe the change"
+```
+
+It stages and commits deployable changes, intentionally leaves `data/pcn.db`
+out of the commit, runs the validation/build commands below, creates the
+minimal release archive, requests the server backup, uploads the archive, and
+activates the new release. The SSH key, host, and URL can be overridden with
+`PCN_SSH_KEY`, `PCN_SSH_HOST`, and `PCN_HEALTH_URL`. Keep the previous release
+for rollback as described below.
+
 Never copy or replace the live database during a code release.
 
 1. From the repository, validate and build:
