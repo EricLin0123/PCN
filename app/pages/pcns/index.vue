@@ -137,7 +137,7 @@ function openRevenuePcn(item: { id: number }) {
 }
 
 const exportFill: Record<string, string> = {
-  MAJOR: 'FFFF0000', MINOR: 'FFFFFF00', EOL: 'FF9900FF', UNKNOWN: 'FFC8C8C8',
+  MAJOR: 'FFFF0000', MAJOR_D: 'FFF59E0B', MINOR: 'FFFFFF00', EOL: 'FF9900FF', UNKNOWN: 'FFC8C8C8',
   ALL_UPLOADED: 'FF00F04B', PARTLY_UPLOADED: 'FFFFFF00', NOT_UPLOADED: 'FFFF0000',
   COMPLETE: 'FF00F04B', PROCESSING: 'FFFFFF00', REJECT: 'FFFF0000', CANCEL: 'FF000000', MIXED: 'FFFF7900', BLANK: 'FFB8B8B8',
   MATCH: 'FF00F04B', MISMATCH: 'FFFF008C', NOT_ON_DELTA: 'FFB8B8B8', NOT_APPLICABLE: 'FFB8B8B8',
@@ -192,7 +192,7 @@ async function exportToExcel() {
       for (const [key, state] of [['risk', pcn.risk], ['upload', pcn.upload_state], ['csc', pcn.csc_status], ['delta', pcn.delta_status], ['alignment', pcn.risk_alignment]] as const) {
         const cell = row.getCell(columns.value.findIndex(column => column.key === key) + 1)
         cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: exportFill[state] || 'FFFFFFFF' } }
-        cell.font = { bold: true, color: { argb: ['MAJOR', 'REJECT', 'CANCEL', 'MISMATCH', 'MISS_ALL_RA'].includes(state) ? 'FFFFFFFF' : 'FF000000' } }
+        cell.font = { bold: true, color: { argb: ['MAJOR', 'MAJOR_D', 'REJECT', 'CANCEL', 'MISMATCH', 'MISS_ALL_RA'].includes(state) ? 'FFFFFFFF' : 'FF000000' } }
       }
     }
 
@@ -245,7 +245,7 @@ async function exportToExcel() {
             <input v-if="column.key === 'record'" v-model="search" class="column-filter" placeholder="Search PCN, part or RA…" @dragstart.prevent @input="applyFilters()" />
             <select v-else-if="column.key === 'sbe1'" v-model="sbe1" class="column-filter" @dragstart.prevent @change="applyFilters()"><option value="">(All)</option><option v-for="name in data?.sbe1Options || []" :key="name" :value="name">{{ name }}</option></select>
             <select v-else-if="column.key === 'changeType'" v-model="changeType" class="column-filter" @dragstart.prevent @change="applyFilters()"><option value="">(All)</option><option v-for="type in changeTypes" :key="type.id" :value="type.name">{{ type.name }}</option></select>
-            <select v-else-if="column.key === 'risk'" v-model="risk" class="column-filter" @dragstart.prevent @change="applyFilters()"><option value="">(All)</option><option>MAJOR</option><option>MINOR</option><option>EOL</option><option>UNKNOWN</option></select>
+            <select v-else-if="column.key === 'risk'" v-model="risk" class="column-filter" @dragstart.prevent @change="applyFilters()"><option value="">(All)</option><option>MAJOR</option><option>MAJOR_D</option><option>MINOR</option><option>EOL</option><option>UNKNOWN</option></select>
             <select v-else-if="column.key === 'upload'" v-model="uploadState" class="column-filter" @dragstart.prevent @change="applyFilters()"><option value="">(All)</option><option value="ALL_UPLOADED">All uploaded</option><option value="PARTLY_UPLOADED">Partly uploaded</option><option value="NOT_UPLOADED">Not uploaded</option></select>
             <select v-else-if="column.key === 'csc'" v-model="cscStatus" class="column-filter" @dragstart.prevent @change="applyFilters()"><option value="">(All)</option><option value="NA">NA</option><option value="NOT_UPLOADED">Not uploaded</option><option value="CSC_UPLOADED">CSC uploaded</option><option value="CONFIRMED">Confirmed uploaded</option></select>
             <select v-else-if="column.key === 'delta'" v-model="statusFilter" class="column-filter" @dragstart.prevent @change="applyFilters()"><option value="">(All)</option><option>CANCEL</option><option>PROCESSING</option><option>REJECT</option><option>COMPLETE</option><option>MIXED</option><option value="BLANK">Blank</option></select>

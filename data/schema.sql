@@ -363,6 +363,13 @@ SELECT
   p.id AS pcn_id,
   COALESCE(
     p.risk_override,
+    CASE
+      WHEN instr(lower(COALESCE(ct.name, '')), 'datasheet') > 0
+        OR instr(lower(COALESCE(p.title, '')), 'datasheet') > 0
+        OR instr(lower(COALESCE(ct.name, '')), 'data sheet') > 0
+        OR instr(lower(COALESCE(p.title, '')), 'data sheet') > 0
+        THEN 'MAJOR_D'
+    END,
     (SELECT rule.expected_risk
      FROM risk_title_rule rule
      WHERE rule.enabled = 1
@@ -374,6 +381,10 @@ SELECT
   ) AS expected_risk,
   CASE
     WHEN p.risk_override IS NOT NULL THEN 'MANUAL_OVERRIDE'
+    WHEN instr(lower(COALESCE(ct.name, '')), 'datasheet') > 0
+      OR instr(lower(COALESCE(p.title, '')), 'datasheet') > 0
+      OR instr(lower(COALESCE(ct.name, '')), 'data sheet') > 0
+      OR instr(lower(COALESCE(p.title, '')), 'data sheet') > 0 THEN 'DATASHEET'
     WHEN EXISTS (
       SELECT 1 FROM risk_title_rule rule
       WHERE rule.enabled = 1
@@ -401,13 +412,13 @@ SELECT
          ORDER BY risk)) AS delta_risks,
   CASE
     WHEN expected.expected_risk = 'EOL' THEN 'NOT_APPLICABLE'
-    WHEN expected.expected_risk NOT IN ('MAJOR', 'MINOR') THEN 'REVIEW'
+    WHEN expected.expected_risk NOT IN ('MAJOR', 'MAJOR_D', 'MINOR') THEN 'REVIEW'
     WHEN NOT EXISTS (SELECT 1 FROM delta_form df WHERE df.delta_pcn_number_base = p.pcn_number_base) THEN 'NOT_ON_DELTA'
     WHEN EXISTS (
       SELECT 1 FROM delta_form df
       WHERE df.delta_pcn_number_base = p.pcn_number_base
         AND upper(COALESCE(df.notify, '')) IN ('MAJOR', 'MINOR')
-        AND upper(df.notify) <> expected.expected_risk
+        AND upper(df.notify) <> CASE WHEN expected.expected_risk = 'MAJOR_D' THEN 'MAJOR' ELSE expected.expected_risk END
     ) THEN 'MISMATCH'
     ELSE 'MATCH'
   END AS risk_alignment
@@ -422,7 +433,7 @@ SELECT
   coverage.total_parts,
   count(DISTINCT rp.ti_part_id) AS ra_covered_parts,
   CASE
-    WHEN expected.expected_risk <> 'MAJOR' THEN 'NA'
+    WHEN expected.expected_risk NOT IN ('MAJOR', 'MAJOR_D') THEN 'NA'
     WHEN count(DISTINCT rp.ti_part_id) = 0 THEN 'MISS_ALL_RA'
     WHEN count(DISTINCT rp.ti_part_id) < coverage.total_parts THEN 'PARTLY_MISS_RA'
     ELSE 'FULL_RA'
@@ -495,13 +506,13 @@ SELECT
     WHEN current_delta.has_reject = 1 THEN 'REJECTED'
     WHEN ops.expected_risk = 'EOL' THEN 'EOL_EXCLUDED'
     WHEN current_delta.delta_status = 'COMPLETE'
-      AND ops.expected_risk IN ('MINOR', 'MAJOR') THEN 'COMPLETED'
+      AND ops.expected_risk IN ('MINOR', 'MAJOR', 'MAJOR_D') THEN 'COMPLETED'
     WHEN current_delta.has_processing = 1
       AND ops.expected_risk = 'MINOR' THEN 'MINOR_PENDING_APPROVAL'
     WHEN current_delta.has_processing = 1
-      AND ops.expected_risk = 'MAJOR' THEN 'MAJOR_PENDING_APPROVAL'
+      AND ops.expected_risk IN ('MAJOR', 'MAJOR_D') THEN 'MAJOR_PENDING_APPROVAL'
     WHEN ops.upload_state <> 'ALL_UPLOADED'
-      AND ops.expected_risk IN ('MINOR', 'MAJOR')
+      AND ops.expected_risk IN ('MINOR', 'MAJOR', 'MAJOR_D')
       AND COALESCE((
         SELECT sum(mmr.net_revenue)
         FROM pcn_ti_part pp
@@ -511,8 +522,8 @@ SELECT
           AND mmr.revenue_month BETWEEN '2025-08' AND strftime('%Y-%m', 'now', 'localtime')
       ), 0) = 0 THEN 'NO_12M_SALES'
     WHEN ops.upload_state <> 'ALL_UPLOADED' AND ops.expected_risk = 'MINOR' THEN 'MINOR_READY_UPLOAD'
-    WHEN ops.upload_state <> 'ALL_UPLOADED' AND ops.expected_risk = 'MAJOR' AND rac.ra_state <> 'FULL_RA' THEN 'MAJOR_BLOCKED_RA'
-    WHEN ops.upload_state <> 'ALL_UPLOADED' AND ops.expected_risk = 'MAJOR' AND rac.ra_state = 'FULL_RA' THEN 'MAJOR_READY_UPLOAD'
+    WHEN ops.upload_state <> 'ALL_UPLOADED' AND ops.expected_risk IN ('MAJOR', 'MAJOR_D') AND rac.ra_state <> 'FULL_RA' THEN 'MAJOR_BLOCKED_RA'
+    WHEN ops.upload_state <> 'ALL_UPLOADED' AND ops.expected_risk IN ('MAJOR', 'MAJOR_D') AND rac.ra_state = 'FULL_RA' THEN 'MAJOR_READY_UPLOAD'
     WHEN ops.upload_state = 'ALL_UPLOADED'
       AND current_delta.delta_status = 'COMPLETE' THEN 'COMPLETED'
     ELSE 'OTHER'

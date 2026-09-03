@@ -275,6 +275,11 @@ textarea {
   background: #f00000;
 }
 
+.risk-major_d {
+  color: #000;
+  background: #f59e0b;
+}
+
 .risk-minor,
 .state-partly-uploaded,
 .state-review {
@@ -701,6 +706,11 @@ td.fill-cell .coverage-count {
 td.fill-major {
   color: #fff;
   background: #f00000 !important;
+}
+
+td.fill-major_d {
+  color: #000;
+  background: #f59e0b !important;
 }
 
 td.fill-minor {

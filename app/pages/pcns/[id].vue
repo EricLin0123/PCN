@@ -20,7 +20,7 @@ const cscUploadState = computed(() => data.value?.cscUpload?.confirmed_at
     : data.value?.pcn.upload_state === 'ALL_UPLOADED' ? 'NA' : 'NOT_UPLOADED')
 const newRa = reactive({ ra_number: '', workbook_filename: '', part_numbers: [] as string[] })
 const raRequests = computed(() => {
-  if (data.value?.pcn.expected_risk !== 'MAJOR') return []
+  if (!['MAJOR', 'MAJOR_D'].includes(data.value?.pcn.expected_risk)) return []
   const groups = new Map<string, any>()
   for (const part of data.value?.parts || []) {
     if (part.has_ra) continue
