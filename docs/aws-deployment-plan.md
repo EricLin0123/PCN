@@ -46,6 +46,7 @@ Create an unprivileged service account and these directories:
 /opt/pcn/releases/<timestamp>  immutable application releases
 /opt/pcn/current               symlink to the active release
 /var/lib/pcn/pcn.db            live SQLite database
+/var/lib/pcn/drive/            persistent uploaded Drive files
 /var/backups/pcn               temporary backup directory
 /etc/pcn/pcn.env               production environment and login credentials
 ```
@@ -63,6 +64,7 @@ NODE_ENV=production
 HOST=127.0.0.1
 PORT=3000
 PCN_DB_PATH=/var/lib/pcn/pcn.db
+PCN_DRIVE_PATH=/var/lib/pcn/drive
 PCN_AUTH_ENABLED=true
 
 PCN_ADMIN_USERNAME=choose-a-production-admin-name

@@ -8,8 +8,7 @@ mkdirSync(outputDir, { recursive: true })
 
 const rows = db.prepare(`
   WITH eligible AS (
-    SELECT DISTINCT affected.pcn_id, affected.ti_part_id, organization.sbe1_id,
-      lower(trim(COALESCE(part.industry, ''))) AS industry
+    SELECT DISTINCT affected.pcn_id, affected.ti_part_id, organization.sbe1_id
     FROM pcn_ti_part affected
     JOIN ti_part part ON part.id = affected.ti_part_id
     JOIN ti_part_organization organization ON organization.ti_part_id = part.id
@@ -23,14 +22,6 @@ const rows = db.prepare(`
       SELECT 1 FROM risk_assessment assessment
       JOIN risk_assessment_ti_part link ON link.risk_assessment_id = assessment.id
       WHERE assessment.pcn_id = eligible.pcn_id AND link.ti_part_id = eligible.ti_part_id
-    )
-    UNION ALL
-    SELECT eligible.*, 'PPAP' FROM eligible
-    JOIN pcn_expected_risk risk ON risk.pcn_id = eligible.pcn_id
-    WHERE risk.expected_risk IN ('MINOR', 'MAJOR') AND eligible.industry = 'automotive' AND NOT EXISTS (
-      SELECT 1 FROM ppap document
-      JOIN ppap_ti_part link ON link.ppap_id = document.id
-      WHERE document.pcn_id = eligible.pcn_id AND link.ti_part_id = eligible.ti_part_id
     )
   )
   SELECT sbe1.name, sbe1.champion_email, pending.document_type,
@@ -50,52 +41,42 @@ const esc = value => String(value).replaceAll('&', '&amp;').replaceAll('<', '&lt
 const slug = value => value.replace(/[^A-Za-z0-9]+/g, '_').replace(/^_+|_+$/g, '')
 const grouped = new Map()
 for (const row of rows) {
-  if (!grouped.has(row.name)) grouped.set(row.name, { name: row.name, email: row.champion_email, RA: [], PPAP: [] })
+  if (!grouped.has(row.name)) grouped.set(row.name, { name: row.name, email: row.champion_email, RA: [] })
   grouped.get(row.name)[row.document_type].push(row)
 }
 
 for (const group of grouped.values()) {
-  for (const type of ['RA', 'PPAP']) {
-    const byPart = new Map()
-    for (const item of group[type]) {
-      if (!byPart.has(item.ti_part_id)) {
-        byPart.set(item.ti_part_id, { ...item, pcnNumbers: new Set() })
-      }
-      byPart.get(item.ti_part_id).pcnNumbers.add(item.pcn_number_base)
+  const byPart = new Map()
+  for (const item of group.RA) {
+    if (!byPart.has(item.ti_part_id)) {
+      byPart.set(item.ti_part_id, { ...item, pcnNumbers: new Set() })
     }
-    group[type] = [...byPart.values()].map(item => ({
-      ...item,
-      pcn_number_base: [...item.pcnNumbers].sort().join(', ')
-    }))
+    byPart.get(item.ti_part_id).pcnNumbers.add(item.pcn_number_base)
   }
+  group.RA = [...byPart.values()].map(item => ({
+    ...item,
+    pcn_number_base: [...item.pcnNumbers].sort().join(', ')
+  }))
 }
 
 const formatRevenue = value => Number(value).toLocaleString('en-US', { maximumFractionDigits: 0 })
 const table = (items, heading) => {
   const totalRevenue = items.reduce((total, item) => total + Number(item.net_revenue || 0), 0)
-  return `<h3>${heading}</h3><table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;font-family:Arial,sans-serif;font-size:10pt"><thead><tr style="background:#e8eef5"><th align="left">${heading === 'RA required' ? 'Part Number' : 'Automotive Part Number'}</th><th align="left">TI PCN Number(s)</th><th align="right">NR (Aug 2025–today)</th></tr></thead><tbody>${items.map(item => `<tr><td>${esc(item.display_part_number)}</td><td>${esc(item.pcn_number_base)}</td><td align="right">${esc(formatRevenue(item.net_revenue))}</td></tr>`).join('')}<tr style="font-weight:bold;background:#f3f6fa"><td colspan="2" align="right">Total NR</td><td align="right">${esc(formatRevenue(totalRevenue))}</td></tr></tbody></table>`
+  return `<h3>${heading}</h3><table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;font-family:Arial,sans-serif;font-size:10pt"><thead><tr style="background:#e8eef5"><th align="left">Part Number</th><th align="left">TI PCN Number(s)</th><th align="right">NR (Aug 2025–today)</th></tr></thead><tbody>${items.map(item => `<tr><td>${esc(item.display_part_number)}</td><td>${esc(item.pcn_number_base)}</td><td align="right">${esc(formatRevenue(item.net_revenue))}</td></tr>`).join('')}<tr style="font-weight:bold;background:#f3f6fa"><td colspan="2" align="right">Total NR</td><td align="right">${esc(formatRevenue(totalRevenue))}</td></tr></tbody></table>`
 }
 const sentence = (count, singular, plural = `${singular}s`) => `${count} ${count === 1 ? singular : plural}`
 const safeEmail = value => value || 'undisclosed-recipients:;'
 
-const summary = ['| SBE-1 | Champion Email | RA PCNs | RA Parts | PPAP PCNs | PPAP Parts | Email File |', '| --- | --- | ---: | ---: | ---: | ---: | --- |']
+const summary = ['| SBE-1 | Champion Email | RA PCNs | RA Parts | Email File |', '| --- | --- | ---: | ---: | --- |']
 for (const group of grouped.values()) {
-  const types = ['RA', 'PPAP'].filter(type => group[type].length)
-  const both = types.length === 2
-  const subjectType = both ? 'RA & PPAP' : types[0]
-  const filename = `Delta_PCN_RA_PPAP_${slug(group.name)}.eml`
+  const filename = `Delta_PCN_RA_${slug(group.name)}.eml`
   const raPcnCount = new Set(group.RA.flatMap(item => item.pcn_number_base.split(', '))).size
-  const ppapPcnCount = new Set(group.PPAP.flatMap(item => item.pcn_number_base.split(', '))).size
-  const intro = both ? 'We need your team\'s support on the outstanding RA and PPAP items below.' : `We need your team\'s support on the outstanding ${subjectType} items below.`
-  const process = both ? 'As a brief refresher, Major PCNs require additional Risk Assessment (RA) documentation, while automotive parts may require PPAP documentation. For the PCNs below, please provide the applicable documents so we can complete the remaining Delta actions.' : `As a brief refresher, ${subjectType === 'RA' ? 'Major PCNs require additional Risk Assessment (RA) documentation' : 'automotive parts may require PPAP documentation'}. For the PCNs below, please provide the required documents so we can complete the remaining Delta actions.`
-  const ppapIntro = group.PPAP.length ? '<p>The TI CSC team will send the PPAP requests directly. Please expect requests for the automotive parts listed below that are under your management, and respond to each request accordingly.</p>' : ''
-  const raTable = group.RA.length ? table(group.RA, 'RA required') : ''
-  const ppapTable = group.PPAP.length ? table(group.PPAP, 'PPAP required') : ''
+  const raTable = table(group.RA, 'RA required')
   const targetEmail = safeEmail(group.email)
-  const body = `<div style="font-family:Arial,sans-serif;font-size:10.5pt;line-height:1.45;color:#202124"><p><strong>Target email:</strong> ${esc(targetEmail)}</p><p>Dear ${esc(group.name)} team,</p><p>Delta is one of TI's worldwide Top 10 customers and is actively requesting closure of outstanding Product Change Notification (PCN) documentation and uploads in Delta's PCN management system. This is an important customer commitment and cross-BU coordination item. ${intro}</p><p><strong>Please treat this as an urgent matter.</strong> The parts listed below represent significant revenue exposure. Failure to provide the required PCN documentation has resulted in end products failing requirements and shipments being placed on hold. Please take immediate action to avoid further customer and business impact.</p><p>${process}</p>${group.RA.length ? `<p><strong>RA required:</strong> Please complete ${sentence(group.RA.length, 'RA part')} across ${sentence(raPcnCount, 'PCN')}. Please see the RA table below for the detailed part and PCN information.</p>` : ''}${ppapIntro}${group.PPAP.length ? `<p><strong>PPAP required:</strong> Please complete ${sentence(group.PPAP.length, 'automotive part')} across ${sentence(ppapPcnCount, 'PCN')}. Please see the PPAP table below for the detailed part and PCN information.</p>` : ''}<p>The RA template will be attached separately. Please coordinate with the appropriate BU and complete the RA in accordance with the template and the applicable PCN requirements. Parts in the same series that have substantially similar changes may be covered by a single RA file.</p><p>Please name each RA file using the TI part number with the <code>.xlsx</code> extension. If one RA covers multiple parts, use their common part-number prefix followed by <code>X</code>. For example, if OPA170AQDBVRQ1 and OPA171AQDBVRQ1 share one RA, name the file <code>OPA17X.xlsx</code>.</p><p>Please review the listed PCNs and parts, coordinate with the appropriate BU or product-line owner as needed, complete the required document(s), and return them to us so we can proceed with the Delta PCN submission. Please let me know if any listed ownership, part, or PCN information appears incorrect or if clarification is needed.</p><p>Best regards,<br>TI Sales</p>${raTable}${ppapTable}</div>`
-  const eml = `From: TI Sales <no-reply@ti.com>\r\nSubject: [Delta PCN Action Required] ${subjectType} Request - ${group.name}\r\nMIME-Version: 1.0\r\nContent-Type: text/html; charset=UTF-8\r\nContent-Transfer-Encoding: 8bit\r\n\r\n${body}`
+  const body = `<div style="font-family:Arial,sans-serif;font-size:10.5pt;line-height:1.45;color:#202124"><p><strong>Target email:</strong> ${esc(targetEmail)}</p><p>Dear ${esc(group.name)} team,</p><p>Thank you for your previous cooperation in providing RAs. We are reviewing another round of Delta PCNs, and the missing RAs requiring your support are listed below.</p><p><strong>RA required:</strong> Please complete ${sentence(group.RA.length, 'RA part')} across ${sentence(raPcnCount, 'PCN')}.</p><p>The RA template will be attached separately. Please return the completed RAs so we can proceed with the Delta PCN submission. Let us know if any listed ownership, part, or PCN information is incorrect.</p><p>Best regards,<br>TI Sales</p>${raTable}</div>`
+  const eml = `From: TI Sales <no-reply@ti.com>\r\nSubject: [Delta PCN Action Required] RA Request - ${group.name}\r\nMIME-Version: 1.0\r\nContent-Type: text/html; charset=UTF-8\r\nContent-Transfer-Encoding: 8bit\r\n\r\n${body}`
   writeFileSync(resolve(outputDir, filename), eml)
-  summary.push(`| ${group.name} | ${group.email || ''} | ${raPcnCount} | ${group.RA.length} | ${ppapPcnCount} | ${group.PPAP.length} | ${filename} |`)
+  summary.push(`| ${group.name} | ${group.email || ''} | ${raPcnCount} | ${group.RA.length} | ${filename} |`)
 }
-writeFileSync(resolve(outputDir, 'SUMMARY.md'), `# Delta PCN RA/PPAP Email Summary\n\nGenerated from the application pending-document rules on ${new Date().toISOString().slice(0, 10)}.\n\n${summary.join('\n')}\n`)
+writeFileSync(resolve(outputDir, 'SUMMARY.md'), `# Delta PCN RA Email Summary\n\nGenerated from the application pending-RA rules on ${new Date().toISOString().slice(0, 10)}.\n\n${summary.join('\n')}\n`)
 console.log(JSON.stringify({ actionableSbe1: grouped.size, emailFiles: grouped.size, outputDir, organizations: [...grouped.keys()] }, null, 2))

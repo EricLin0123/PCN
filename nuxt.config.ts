@@ -3,6 +3,8 @@ export default defineNuxtConfig({
   devtools: { enabled: true },
   modules: ['@nuxt/icon'],
   runtimeConfig: {
+    driveStoragePath: process.env.PCN_DRIVE_PATH || 'data/drive',
+    driveQuotaBytes: Number(process.env.PCN_DRIVE_QUOTA_BYTES) || 40 * 1024 ** 3,
     authEnabled: process.env.PCN_AUTH_ENABLED
       ? process.env.PCN_AUTH_ENABLED === 'true'
       : process.env.NODE_ENV === 'production',
@@ -12,7 +14,7 @@ export default defineNuxtConfig({
         : process.env.NODE_ENV === 'production',
     },
   },
-  css: ['~/assets/css/main.css', '~/assets/css/risk-assessments.css', '~/assets/css/operational-status.css', '~/assets/css/flat-ui.css', '~/assets/css/executive.css', '~/assets/css/parts.css', '~/assets/css/organization.css'],
+  css: ['~/assets/css/main.css', '~/assets/css/risk-assessments.css', '~/assets/css/operational-status.css', '~/assets/css/flat-ui.css', '~/assets/css/executive.css', '~/assets/css/parts.css', '~/assets/css/organization.css', '~/assets/css/drive.css'],
   nitro: {
     externals: { external: ['node:sqlite'] },
   },

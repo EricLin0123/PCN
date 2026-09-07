@@ -15,6 +15,12 @@ export const pendingDocumentsCte = `
       SELECT 1 FROM risk_assessment assessment
       JOIN risk_assessment_ti_part link ON link.risk_assessment_id = assessment.id
       WHERE assessment.pcn_id = eligible.pcn_id AND link.ti_part_id = eligible.ti_part_id
+    ) AND NOT EXISTS (
+      SELECT 1 FROM pcn
+      JOIN delta_form form ON form.delta_pcn_number_base = pcn.pcn_number_base
+      JOIN delta_form_item item ON item.delta_form_id = form.id
+      JOIN delta_ti_part_mapping mapping ON mapping.delta_part_id = item.delta_part_id
+      WHERE pcn.id = eligible.pcn_id AND mapping.ti_part_id = eligible.ti_part_id
     )
     UNION ALL
     SELECT eligible.*, 'PPAP' AS document_type FROM eligible

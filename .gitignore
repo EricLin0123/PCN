@@ -8,4 +8,6 @@ node_modules/
 !.env.example
 data/pcn.db-wal
 data/pcn.db-shm
+data/drive/
 *.log
+RA/

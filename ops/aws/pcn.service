@@ -11,6 +11,7 @@ WorkingDirectory=/opt/pcn/current
 EnvironmentFile=/etc/pcn/pcn.env
 Environment=NITRO_HOST=127.0.0.1
 Environment=NITRO_PORT=3000
+Environment=PCN_DRIVE_PATH=/var/lib/pcn/drive
 ExecStart=/usr/bin/node .output/server/index.mjs
 Restart=on-failure
 RestartSec=5

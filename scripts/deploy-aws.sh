@@ -39,7 +39,7 @@ fi
 cleanup() { rm -f "$archive_path" "$database_archive"; }
 trap cleanup EXIT
 
-COPYFILE_DISABLE=1 tar -czf "$archive_path" .output data/schema.sql
+COPYFILE_DISABLE=1 tar -czf "$archive_path" .output data/schema.sql ops/aws/pcn.service
 
 printf 'Creating a verified production database backup...\n'
 ssh "${ssh_options[@]}" "$ssh_host" \
@@ -58,6 +58,9 @@ ssh "${ssh_options[@]}" "$ssh_host" "
   sudo mkdir -p \"\$release_dir\"
   sudo tar -xzf '/tmp/pcn-$release_id.tar.gz' -C \"\$release_dir\"
   sudo chown -R pcn:pcn \"\$release_dir\"
+  sudo install -d -o pcn -g pcn -m 0750 /var/lib/pcn/drive
+  sudo install -o root -g root -m 0644 "\$release_dir/ops/aws/pcn.service" /etc/systemd/system/pcn.service
+  sudo systemctl daemon-reload
   sudo systemctl stop pcn.service
   sudo ln -sfn \"\$release_dir\" '$remote_root/current'
   sudo systemctl start pcn.service

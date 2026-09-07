@@ -5,6 +5,7 @@ const links = [
   { to: '/', label: 'Overview', icon: 'lucide:layout-dashboard' },
   { to: '/pcns', label: 'PCN records', icon: 'lucide:files' },
   { to: '/parts', label: 'Parts', icon: 'lucide:cpu' },
+  { to: '/drive', label: 'Drive', icon: 'lucide:hard-drive' },
   { to: '/SBE', label: 'SBE', icon: 'lucide:network' },
   { to: '/pcns/new', label: 'New PCN', icon: 'lucide:circle-plus' },
 ]
