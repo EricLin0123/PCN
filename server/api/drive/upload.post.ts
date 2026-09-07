@@ -1,12 +1,12 @@
 import { pipeline } from 'node:stream/promises'
 import { Transform } from 'node:stream'
-import { driveConfig, driveUsage, openUniqueDriveFile, removePartialUpload, safeDriveName } from '../../utils/drive'
+import { decodeDriveName, driveConfig, driveUsage, openUniqueDriveFile, removePartialUpload } from '../../utils/drive'
 
 export default defineEventHandler(async (event) => {
   const encodedName = getRequestHeader(event, 'x-file-name')
   if (!encodedName) throw createError({ statusCode: 400, statusMessage: 'A file name is required.' })
 
-  const requestedName = safeDriveName(encodedName)
+  const requestedName = decodeDriveName(encodedName)
   const contentLength = Number(getRequestHeader(event, 'content-length') || 0)
   if (!Number.isFinite(contentLength) || contentLength < 0) {
     throw createError({ statusCode: 400, statusMessage: 'The file size is invalid.' })

@@ -109,6 +109,17 @@
   gap: 6px;
 }
 
+.drive-file-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 7px;
+}
+
+.drive-table td:last-child {
+  width: 170px;
+}
+
 .icon-button.danger {
   color: #c43a54;
 }

@@ -93,6 +93,81 @@ const sbe1Totals = [...new Set(emailRows.map(row => row.sbe1))].sort().map(sbe1 
 }))
 const sbe1PendingPartTotal = sbe1Totals.reduce((sum, row) => sum + row.pendingRaParts, 0)
 
+const mappedRaRows = database.prepare(`
+  SELECT assessment.pcn_id, link.ti_part_id, pcn.pcn_number_base,
+    pcn.notification_date, pcn.title, risk.expected_risk,
+    part.display_part_number, part.normalized_part_number,
+    COALESCE(sbe1.name, '') AS sbe1,
+    assessment.ra_number, assessment.workbook_filename, assessment.source_row,
+    COALESCE((SELECT SUM(revenue.net_revenue)
+      FROM material_month_revenue revenue
+      WHERE revenue.normalized_part_number = part.normalized_part_number
+        AND revenue.revenue_month BETWEEN ? AND ?), 0) AS trailing_12m_revenue,
+    CASE WHEN EXISTS (
+      SELECT 1 FROM delta_form form
+      JOIN delta_form_item item ON item.delta_form_id = form.id
+      JOIN delta_ti_part_mapping mapping ON mapping.delta_part_id = item.delta_part_id
+      WHERE form.delta_pcn_number_base = pcn.pcn_number_base
+        AND mapping.ti_part_id = part.id
+    ) THEN 'YES' ELSE 'NO' END AS uploaded_to_delta
+  FROM risk_assessment assessment
+  JOIN risk_assessment_ti_part link ON link.risk_assessment_id = assessment.id
+  JOIN pcn ON pcn.id = assessment.pcn_id
+  JOIN ti_part part ON part.id = link.ti_part_id
+  JOIN pcn_expected_risk risk ON risk.pcn_id = pcn.id
+  LEFT JOIN ti_part_organization organization ON organization.ti_part_id = part.id
+  LEFT JOIN sbe1 ON sbe1.id = organization.sbe1_id
+  ORDER BY part.normalized_part_number, pcn.pcn_number_base, assessment.ra_number
+`).all(fromMonth, asOfMonth)
+
+const mappedByPcnPart = new Map()
+for (const row of mappedRaRows) {
+  const key = `${row.pcn_id}:${row.ti_part_id}`
+  if (!mappedByPcnPart.has(key)) mappedByPcnPart.set(key, [])
+  mappedByPcnPart.get(key).push(row)
+}
+
+const sharingReviewRows = [
+  ...pendingRows.map(row => ({
+    normalizedPart: row.normalized_part_number,
+    partNumber: row.display_part_number,
+    raStatus: 'MISSING RA',
+    sbe1: row.sbe1,
+    pcnNumber: row.pcn_number_base,
+    expectedRisk: row.expected_risk,
+    notificationDate: row.notification_date || '',
+    pcnTitle: row.title,
+    trailingRevenue: Number(row.trailing_12m_revenue || 0),
+    uploadedToDelta: 'NO',
+    raReferences: '',
+    raWorkbooks: '',
+    raWorksheetIndexes: '',
+    reviewPurpose: 'Candidate needing RA; compare nearby part prefixes for shareable evidence'
+  })),
+  ...[...mappedByPcnPart.values()].map(rows => {
+    const first = rows[0]
+    return {
+      normalizedPart: first.normalized_part_number,
+      partNumber: first.display_part_number,
+      raStatus: 'RA MAPPED',
+      sbe1: first.sbe1,
+      pcnNumber: first.pcn_number_base,
+      expectedRisk: first.expected_risk,
+      notificationDate: first.notification_date || '',
+      pcnTitle: first.title,
+      trailingRevenue: Number(first.trailing_12m_revenue || 0),
+      uploadedToDelta: first.uploaded_to_delta,
+      raReferences: uniqueLines(rows.map(row => row.ra_number)),
+      raWorkbooks: uniqueLines(rows.map(row => row.workbook_filename)),
+      raWorksheetIndexes: uniqueLines(rows.map(row => row.source_row)),
+      reviewPurpose: 'Existing RA evidence; assess whether it can cover similar missing parts'
+    }
+  })
+].sort((left, right) => left.sbe1.localeCompare(right.sbe1)
+  || left.normalizedPart.localeCompare(right.normalizedPart)
+  || left.pcnNumber.localeCompare(right.pcnNumber)
+  || right.raStatus.localeCompare(left.raStatus))
+
 const workbook = new ExcelJS.Workbook()
 workbook.creator = 'PCN Workbench'
 workbook.created = new Date()
@@ -135,10 +210,41 @@ summary.addRows([
   ['Email List - Missing RA rows', emailRows.length],
   ['Sum of /SBE pending RA parts', sbe1PendingPartTotal],
   ['Pending PCN-part relationships', pendingRows.length],
+  ['Mapped RA PCN-part relationships in sharing review', mappedByPcnPart.size],
+  ['RA Sharing Review rows', sharingReviewRows.length],
   ['Reconciliation', emailRows.length === sbe1PendingPartTotal ? 'MATCH' : 'MISMATCH']
 ])
 finishSheet(summary)
 summary.autoFilter = undefined
+
+const sharing = workbook.addWorksheet('RA Sharing Review')
+sharing.columns = [
+  { header: 'Normalized Part Number', key: 'normalizedPart', width: 30 },
+  { header: 'TI Part Number', key: 'partNumber', width: 30 },
+  { header: 'RA Status', key: 'raStatus', width: 18 },
+  { header: 'SBE-1', key: 'sbe1', width: 16 },
+  { header: 'PCN Number', key: 'pcnNumber', width: 18 },
+  { header: 'Expected Risk', key: 'expectedRisk', width: 16 },
+  { header: 'Notification Date', key: 'notificationDate', width: 18 },
+  { header: 'PCN Title', key: 'pcnTitle', width: 55 },
+  { header: `Net Revenue (${fromMonth} to ${asOfMonth})`, key: 'trailingRevenue', width: 24 },
+  { header: 'Uploaded to Delta?', key: 'uploadedToDelta', width: 20 },
+  { header: 'RA Reference(s)', key: 'raReferences', width: 52 },
+  { header: 'RA Workbook(s)', key: 'raWorkbooks', width: 58 },
+  { header: 'RA Worksheet Index(es)', key: 'raWorksheetIndexes', width: 24 },
+  { header: 'Manual Review Purpose', key: 'reviewPurpose', width: 58 }
+]
+sharing.addRows(sharingReviewRows)
+sharing.getColumn('trailingRevenue').numFmt = '#,##0.00'
+finishSheet(sharing)
+for (let rowNumber = 2; rowNumber <= sharing.rowCount; rowNumber++) {
+  const hasRa = sharing.getCell(rowNumber, 3).value === 'RA MAPPED'
+  sharing.getRow(rowNumber).fill = {
+    type: 'pattern',
+    pattern: 'solid',
+    fgColor: { argb: hasRa ? 'FFC6EFCE' : 'FFFFC7CE' }
+  }
+}
 
 const email = workbook.addWorksheet('Email List - Missing RA')
 email.columns = [
@@ -199,5 +305,7 @@ console.log(JSON.stringify({
   emailListRows: emailRows.length,
   sbe1PendingPartTotal,
   pendingPcnPartRelationships: pendingRows.length,
+  mappedRaPcnPartRelationships: mappedByPcnPart.size,
+  sharingReviewRows: sharingReviewRows.length,
   reconciliation: emailRows.length === sbe1PendingPartTotal ? 'MATCH' : 'MISMATCH'
 }, null, 2))

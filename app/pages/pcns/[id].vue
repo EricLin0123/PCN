@@ -32,10 +32,11 @@ const raRequests = computed(() => {
   return [...groups.values()]
 })
 const automotiveParts = computed(() => (data.value?.parts || []).filter((part: any) => String(part.industry || '').trim().toLowerCase() === 'automotive'))
+const raUploadFolder = 'https://sps16.itg.ti.com/sites/ticsc/_layouts/15/start.aspx#/Shared%20Documents/Forms/AllItems.aspx?RootFolder=%2Fsites%2Fticsc%2FShared%20Documents%2FDelta%20PCN%20Support%2FRisk%20Assessment%20Reports'
 function raEmail(request: any) {
   const subject = `RA request for TI PCN ${data.value.pcn.pcn_number_base}`
   const teamName = request.sbe1_name || 'SBE-1'
-  const body = `Dear ${teamName} team,\n\nPlease provide the risk assessment (RA) for TI PCN ${data.value.pcn.pcn_number_base}.\n\nParts involved:\n${request.parts.map((part: string) => `- ${part}`).join('\n')}\n\nThe customer is Delta, and this request is very important. Please prioritize it accordingly.\n\nThank you.`
+  const body = `Dear ${teamName} team,\n\nPlease provide the risk assessment (RA) for TI PCN ${data.value.pcn.pcn_number_base}.\n\nParts involved:\n${request.parts.map((part: string) => `- ${part}`).join('\n')}\n\nThe customer is Delta, and this request is very important. Please prioritize it accordingly.\n\nPlease complete and upload all requested RAs to the following SharePoint folder by September 18, 2026:\n${raUploadFolder}\n\nThank you.`
   return { to: request.champion_email, subject, body }
 }
 function showEmailPreview(request: any) {

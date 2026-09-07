@@ -27,12 +27,7 @@ export async function ensureDriveRoot() {
 }
 
 export function safeDriveName(value: string) {
-  let name: string
-  try {
-    name = decodeURIComponent(value).normalize('NFC').trim()
-  } catch {
-    throw createError({ statusCode: 400, statusMessage: 'The file name is invalid.' })
-  }
+  const name = value.normalize('NFC').trim()
 
   if (!name || name === '.' || name === '..' || basename(name) !== name || /[\\/\0\r\n]/.test(name)) {
     throw createError({ statusCode: 400, statusMessage: 'The file name is invalid.' })
@@ -41,6 +36,15 @@ export function safeDriveName(value: string) {
     throw createError({ statusCode: 400, statusMessage: 'The file name is too long.' })
   }
   return name
+}
+
+export function decodeDriveName(value: string) {
+  try {
+    return safeDriveName(decodeURIComponent(value))
+  } catch (error: any) {
+    if (error?.statusCode) throw error
+    throw createError({ statusCode: 400, statusMessage: 'The file name is invalid.' })
+  }
 }
 
 export async function listDriveFiles(): Promise<DriveFile[]> {

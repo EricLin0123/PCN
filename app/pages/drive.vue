@@ -18,6 +18,7 @@ const fileInput = ref<HTMLInputElement | null>(null)
 const search = ref('')
 const dragging = ref(false)
 const uploads = ref<UploadItem[]>([])
+const deletingFiles = ref(new Set<string>())
 const message = ref('')
 const messageType = ref('success')
 
@@ -132,6 +133,24 @@ function downloadUrl(name: string) {
   return `/api/drive/download?name=${encodeURIComponent(name)}`
 }
 
+async function deleteFile(file: DriveFile) {
+  if (!confirm(`Delete ${file.name}? This cannot be undone.`)) return
+
+  deletingFiles.value.add(file.name)
+  try {
+    await $fetch('/api/drive', {
+      method: 'DELETE',
+      query: { name: file.name }
+    })
+    await refresh()
+    notify(`${file.name} deleted.`)
+  } catch (error: any) {
+    notify(error?.data?.statusMessage || error?.data?.message || 'File could not be deleted.', 'error')
+  } finally {
+    deletingFiles.value.delete(file.name)
+  }
+}
+
 function clearFinishedUploads() {
   uploads.value = uploads.value.filter(upload => upload.state === 'waiting' || upload.state === 'uploading')
 }
@@ -210,7 +229,10 @@ function clearFinishedUploads() {
             <td><span class="drive-file-icon"><Icon :name="fileIcon(file.name)" /></span><strong>{{ file.name }}</strong></td>
             <td>{{ formatDate(file.modifiedAt) }}</td>
             <td>{{ formatBytes(file.size) }}</td>
-            <td><a class="button small" :href="downloadUrl(file.name)" download><Icon name="lucide:download" /> Download</a></td>
+            <td><div class="drive-file-actions">
+              <a class="button small" :href="downloadUrl(file.name)" download><Icon name="lucide:download" /> Download</a>
+              <button class="icon-button danger" type="button" title="Delete file" :aria-label="`Delete ${file.name}`" :disabled="deletingFiles.has(file.name)" @click="deleteFile(file)"><Icon :name="deletingFiles.has(file.name) ? 'lucide:loader-circle' : 'lucide:trash-2'" :class="{ spin: deletingFiles.has(file.name) }" /></button>
+            </div></td>
           </tr></tbody>
         </table>
       </div>
