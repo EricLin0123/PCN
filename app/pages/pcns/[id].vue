@@ -5,7 +5,6 @@ const revenueTo = ref(String(route.query.revenueTo || '2026-09'))
 const revenueQuery = computed(() => ({ revenueFrom: revenueFrom.value, revenueTo: revenueTo.value }))
 const { data, error, refresh } = await useFetch<any>(`/api/pcns/${route.params.id}`, { query: revenueQuery, watch: [revenueQuery] })
 const { data: changeTypes } = await useFetch<any[]>('/api/change-types')
-const { isAdmin } = useAuth()
 const editing = ref(false), saving = ref(false), message = ref(''), messageType = ref('success')
 const emailPreview = ref<any>(null)
 const emailCopyStatus = ref('')
@@ -13,12 +12,10 @@ const form = reactive<any>({})
 const cscForm = reactive({ apply_date: '', form_no: '', pcn_no: '' })
 const savingCsc = ref(false)
 const deletingCsc = ref(false)
-const cscUploadState = computed(() => data.value?.cscUpload?.confirmed_at
-  ? 'CONFIRMED'
-  : data.value?.cscUpload
-    ? 'CSC_UPLOADED'
-    : data.value?.pcn.upload_state === 'ALL_UPLOADED' ? 'NA' : 'NOT_UPLOADED')
-const newRa = reactive({ ra_number: '', workbook_filename: '', part_numbers: [] as string[] })
+const cscUploadState = computed(() => data.value?.cscUpload
+  ? 'CSC_UPLOADED'
+  : data.value?.pcn.upload_state === 'ALL_UPLOADED' ? 'NA' : 'NOT_UPLOADED')
+const savingRaParts = ref<string[]>([])
 const newPpap = reactive({ ppap_number: '', filename: '', part_numbers: [] as string[] })
 const raRequests = computed(() => {
   if (!['MAJOR', 'MAJOR_D'].includes(data.value?.pcn.expected_risk)) return []
@@ -79,23 +76,22 @@ async function saveForm(delta: any) {
   try { await $fetch(`/api/delta-forms/${delta.id}`, { method: 'PATCH', body: delta }); await refresh(); notify(`Delta form ${delta.form_no} updated.`) }
   catch (e: any) { notify(e.data?.statusMessage || 'Unable to update Delta form.', 'error') }
 }
-async function addAssessment() {
+async function setRaAcquired(part: any, acquired: boolean) {
+  const partNumber = part.normalized_part_number
+  savingRaParts.value.push(partNumber)
   try {
-    await $fetch(`/api/pcns/${route.params.id}/risk-assessments`, { method: 'POST', body: newRa })
-    Object.assign(newRa, { ra_number: '', workbook_filename: '', part_numbers: [] })
-    await refresh(); notify('Risk assessment added and linked to this PCN.')
-  } catch (e: any) { notify(e.data?.statusMessage || 'Unable to add risk assessment.', 'error') }
-}
-async function saveAssessment(assessment: any) {
-  try {
-    await $fetch(`/api/risk-assessments/${assessment.id}`, { method: 'PATCH', body: assessment })
-    await refresh(); notify(`RA ${assessment.ra_number} updated.`)
-  } catch (e: any) { notify(e.data?.statusMessage || 'Unable to update risk assessment.', 'error') }
-}
-async function deleteAssessment(assessment: any) {
-  if (!confirm(`Delete RA ${assessment.ra_number}? This removes the report and its part links from the database.`)) return
-  try { await $fetch(`/api/risk-assessments/${assessment.id}`, { method: 'DELETE' }); await refresh(); notify(`RA ${assessment.ra_number} deleted.`) }
-  catch (e: any) { notify(e.data?.statusMessage || 'Unable to delete risk assessment.', 'error') }
+    await $fetch(`/api/pcns/${route.params.id}/ra-coverage`, {
+      method: 'PATCH',
+      body: { part_number: partNumber, acquired }
+    })
+    await refresh()
+    notify(`RA for ${part.display_part_number} marked as ${acquired ? 'acquired' : 'not acquired'}.`)
+  } catch (e: any) {
+    await refresh()
+    notify(e.data?.statusMessage || 'Unable to update RA status.', 'error')
+  } finally {
+    savingRaParts.value = savingRaParts.value.filter(value => value !== partNumber)
+  }
 }
 async function addPpap() {
   try {
@@ -124,19 +120,12 @@ async function saveCscUpload() {
   try {
     await $fetch(`/api/pcns/${route.params.id}/csc-upload`, { method: 'PUT', body: cscForm })
     await refresh()
-    notify('CSC upload details recorded. An admin can now verify the upload.')
+    notify('CSC upload recorded.')
   } catch (e: any) { notify(e.data?.statusMessage || 'Unable to record the CSC upload.', 'error') }
   finally { savingCsc.value = false }
 }
-async function setConfirmation(confirmed: boolean) {
-  try {
-    await $fetch(`/api/pcns/${route.params.id}/csc-upload/confirmation`, { method: 'PATCH', body: { confirmed } })
-    await refresh()
-    notify(confirmed ? 'Upload confirmed by admin.' : 'Admin confirmation revoked.')
-  } catch (e: any) { notify(e.data?.statusMessage || 'Unable to change confirmation.', 'error') }
-}
 async function deleteCscUpload() {
-  if (!confirm('Delete this CSC upload record? This also removes its admin confirmation.')) return
+  if (!confirm('Delete this CSC upload record?')) return
   deletingCsc.value = true
   try {
     await $fetch(`/api/pcns/${route.params.id}/csc-upload`, { method: 'DELETE' })
@@ -167,7 +156,7 @@ async function deleteCscUpload() {
 
       <section class="detail-grid">
         <article class="panel facts-panel"><div class="panel-heading"><div><h2>Notification facts</h2><p>Authoritative PCN metadata</p></div><Icon name="lucide:file-text" /></div>
-          <dl class="facts"><div><dt>Notification date</dt><dd>{{ data.pcn.notification_date || 'Not set' }}</dd></div><div><dt>Change type</dt><dd>{{ data.pcn.change_type || 'Unspecified' }}</dd></div><div><dt>Expected risk</dt><dd><RiskBadge :risk="data.pcn.expected_risk" /></dd></div><div><dt>Manual override</dt><dd>{{ data.pcn.risk_override || 'None' }}</dd></div><div><dt>RA status</dt><dd><StateBadge :state="data.pcn.ra_document_state" /> <button v-if="data.pcn.ra_document_state === 'NOT_REQUESTED'" class="status-action" @click="setRequest('RA', true)">Mark request sent</button><button v-else-if="data.pcn.ra_document_state === 'REQUEST_SENT'" class="status-action" @click="setRequest('RA', false)">Undo request sent</button></dd></div><div><dt>PPAP status</dt><dd><StateBadge :state="data.pcn.ppap_document_state" /> <button v-if="data.pcn.ppap_document_state === 'NOT_REQUESTED'" class="status-action" @click="setRequest('PPAP', true)">Mark request sent</button><button v-else-if="data.pcn.ppap_document_state === 'REQUEST_SENT'" class="status-action" @click="setRequest('PPAP', false)">Undo request sent</button></dd></div><div><dt>Upload state</dt><dd><StateBadge :state="data.pcn.upload_state" /> <small class="coverage-count">{{ data.pcn.uploaded_parts }}/{{ data.pcn.delta_relevant_parts }} Delta parts</small></dd></div><div><dt>CSC verification</dt><dd><StateBadge :state="cscUploadState" /></dd></div><div><dt>Delta risk check</dt><dd><StateBadge :state="data.pcn.risk_alignment" /> <small v-if="data.pcn.delta_risks" class="coverage-count">Delta: {{ data.pcn.delta_risks }}</small></dd></div></dl>
+          <dl class="facts"><div><dt>Notification date</dt><dd>{{ data.pcn.notification_date || 'Not set' }}</dd></div><div><dt>Change type</dt><dd>{{ data.pcn.change_type || 'Unspecified' }}</dd></div><div><dt>Expected risk</dt><dd><RiskBadge :risk="data.pcn.expected_risk" /></dd></div><div><dt>Manual override</dt><dd>{{ data.pcn.risk_override || 'None' }}</dd></div><div><dt>RA status</dt><dd><StateBadge :state="data.pcn.ra_document_state" /> <button v-if="data.pcn.ra_document_state === 'NOT_REQUESTED'" class="status-action" @click="setRequest('RA', true)">Mark request sent</button><button v-else-if="data.pcn.ra_document_state === 'REQUEST_SENT'" class="status-action" @click="setRequest('RA', false)">Undo request sent</button></dd></div><div><dt>PPAP status</dt><dd><StateBadge :state="data.pcn.ppap_document_state" /> <button v-if="data.pcn.ppap_document_state === 'NOT_REQUESTED'" class="status-action" @click="setRequest('PPAP', true)">Mark request sent</button><button v-else-if="data.pcn.ppap_document_state === 'REQUEST_SENT'" class="status-action" @click="setRequest('PPAP', false)">Undo request sent</button></dd></div><div><dt>Upload state</dt><dd><StateBadge :state="data.pcn.upload_state" /> <small class="coverage-count">{{ data.pcn.uploaded_parts }}/{{ data.pcn.delta_relevant_parts }} Delta parts</small></dd></div><div><dt>CSC upload</dt><dd><StateBadge :state="cscUploadState" /></dd></div><div><dt>Delta risk check</dt><dd><StateBadge :state="data.pcn.risk_alignment" /> <small v-if="data.pcn.delta_risks" class="coverage-count">Delta: {{ data.pcn.delta_risks }}</small></dd></div></dl>
           <div v-if="data.pcn.notes" class="notes"><strong>Internal notes</strong><p>{{ data.pcn.notes }}</p></div>
         </article>
         <article class="panel parts-panel"><div class="panel-heading"><div><h2>TI affected parts</h2><p>{{ data.parts.length }} authoritative relationships · Total NR {{ formatRevenue(data.netRevenue) }}</p></div><Icon name="lucide:cpu" /></div>
@@ -178,20 +167,17 @@ async function deleteCscUpload() {
       </section>
 
       <section v-if="data.cscUpload || data.pcn.upload_state !== 'ALL_UPLOADED'" class="panel csc-upload-panel">
-        <div class="section-title"><div><p class="eyebrow">CSC handoff</p><h2>Upload verification</h2></div><StateBadge :state="cscUploadState" /></div>
-        <p class="csc-explanation">CSC records its Delta submission here. This claim stays separate from imported Delta evidence until an admin confirms it.</p>
+        <div class="section-title"><div><p class="eyebrow">CSC handoff</p><h2>CSC upload</h2></div><StateBadge :state="cscUploadState" /></div>
+        <p class="csc-explanation">Recording the Delta submission here marks the CSC handoff as uploaded.</p>
         <form class="csc-upload-form" @submit.prevent="saveCscUpload">
-          <label><span>APPLY_DATE</span><input v-model="cscForm.apply_date" type="date" required :disabled="Boolean(data.cscUpload?.confirmed_at)" /></label>
-          <label><span>FORM_NO</span><input v-model="cscForm.form_no" required placeholder="PCN10H21020230103111707" :disabled="Boolean(data.cscUpload?.confirmed_at)" /></label>
-          <label><span>PCN_NO with suffix</span><input v-model="cscForm.pcn_no" required :placeholder="`${data.pcn.pcn_number_base}.0`" :disabled="Boolean(data.cscUpload?.confirmed_at)" /></label>
-          <button v-if="!data.cscUpload?.confirmed_at" class="button primary" :disabled="savingCsc"><Icon :name="savingCsc ? 'lucide:loader-circle' : 'lucide:upload-check'" :class="{ spin: savingCsc }" /> {{ data.cscUpload ? 'Update CSC upload' : 'Mark CSC uploaded' }}</button>
+          <label><span>APPLY_DATE</span><input v-model="cscForm.apply_date" type="date" required /></label>
+          <label><span>FORM_NO</span><input v-model="cscForm.form_no" required placeholder="PCN10H21020230103111707" /></label>
+          <label><span>PCN_NO with suffix</span><input v-model="cscForm.pcn_no" required :placeholder="`${data.pcn.pcn_number_base}.0`" /></label>
+          <button class="button primary" :disabled="savingCsc"><Icon :name="savingCsc ? 'lucide:loader-circle' : 'lucide:upload-check'" :class="{ spin: savingCsc }" /> {{ data.cscUpload ? 'Update CSC upload' : 'Mark CSC uploaded' }}</button>
         </form>
         <div v-if="data.cscUpload" class="csc-audit">
           <span>Marked by <strong>{{ data.cscUpload.uploaded_by || 'development user' }}</strong> at {{ data.cscUpload.uploaded_at }}</span>
-          <span v-if="data.cscUpload.confirmed_at">Confirmed by <strong>{{ data.cscUpload.confirmed_by || 'development user' }}</strong> at {{ data.cscUpload.confirmed_at }}</span>
           <button class="icon-button danger" type="button" title="Delete CSC upload record" aria-label="Delete CSC upload record" :disabled="deletingCsc" @click="deleteCscUpload"><Icon :name="deletingCsc ? 'lucide:loader-circle' : 'lucide:trash-2'" :class="{ spin: deletingCsc }" /></button>
-          <button v-if="isAdmin" class="button" :class="data.cscUpload.confirmed_at ? 'secondary' : 'primary'" type="button" @click="setConfirmation(!data.cscUpload.confirmed_at)"><Icon :name="data.cscUpload.confirmed_at ? 'lucide:shield-x' : 'lucide:badge-check'" /> {{ data.cscUpload.confirmed_at ? 'Revoke confirmation' : 'Confirm uploaded' }}</button>
-          <small v-else>Only an admin can confirm this upload.</small>
         </div>
       </section>
 
@@ -221,7 +207,7 @@ async function deleteCscUpload() {
       </section>
 
       <section id="risk-assessments" class="ra-section">
-        <div class="section-title"><div><p class="eyebrow">Risk coverage</p><h2>Risk assessments</h2></div><span class="section-count">{{ data.riskAssessments.length }}</span></div>
+        <div class="section-title"><div><p class="eyebrow">Risk coverage</p><h2>Risk assessments</h2></div><span class="section-count">{{ data.parts.filter((part: any) => part.has_ra).length }}/{{ data.parts.length }}</span></div>
         <div v-if="raRequests.length" class="ra-request-list">
           <article v-for="request in raRequests" :key="request.sbe1_name || 'unassigned'" class="panel ra-request">
             <div><strong>{{ request.sbe1_name || 'SBE-1 not assigned' }}</strong><p>{{ request.parts.length }} part{{ request.parts.length === 1 ? '' : 's' }} still require RA</p></div>
@@ -229,21 +215,20 @@ async function deleteCscUpload() {
             <span v-else class="ra-contact-missing">Champion email not available</span>
           </article>
         </div>
-        <form class="panel ra-add" @submit.prevent="addAssessment">
-          <div><label>RA number</label><input v-model="newRa.ra_number" required placeholder="185" /></div>
-          <div><label>RA workbook filename</label><input v-model="newRa.workbook_filename" placeholder="PCN_…__MPN_….xlsx" /></div>
-          <div><label>Covered TI parts</label><select v-model="newRa.part_numbers" required multiple><option v-for="part in data.parts" :key="part.id" :value="part.normalized_part_number">{{ part.display_part_number }}</option></select><small>Hold Ctrl/Cmd to select multiple</small></div>
-          <button class="button primary"><Icon name="lucide:plus" /> Add RA</button>
-        </form>
-        <div v-if="data.riskAssessments.length" class="ra-list">
-          <article v-for="assessment in data.riskAssessments" :key="assessment.id" class="panel ra-card">
-            <div class="ra-number"><span>RA</span><input v-model="assessment.ra_number" aria-label="RA number" /></div>
-            <div class="ra-file"><label>Workbook filename</label><input v-model="assessment.workbook_filename" /></div>
-            <div class="ra-parts"><label>Covered TI parts</label><select v-model="assessment.part_numbers" multiple><option v-for="part in data.parts" :key="part.id" :value="part.normalized_part_number">{{ part.display_part_number }}</option></select></div>
-            <div class="ra-actions"><button class="icon-button save" title="Save risk assessment" @click="saveAssessment(assessment)"><Icon name="lucide:save" /></button><button class="icon-button danger" title="Delete risk assessment" @click="deleteAssessment(assessment)"><Icon name="lucide:trash-2" /></button></div>
-          </article>
+        <div v-if="data.parts.length" class="panel ra-coverage-list">
+          <label v-for="part in data.parts" :key="part.id" class="ra-coverage-item">
+            <input
+              type="checkbox"
+              :checked="Boolean(part.has_ra)"
+              :disabled="savingRaParts.includes(part.normalized_part_number)"
+              @change="setRaAcquired(part, ($event.target as HTMLInputElement).checked)"
+            />
+            <span><strong>{{ part.display_part_number }}</strong><small>{{ part.has_ra ? 'RA acquired' : 'RA not acquired' }}</small></span>
+            <Icon v-if="savingRaParts.includes(part.normalized_part_number)" name="lucide:loader-circle" class="spin" />
+            <Icon v-else :name="part.has_ra ? 'lucide:circle-check' : 'lucide:circle'" />
+          </label>
         </div>
-        <EmptyState v-else title="No risk assessments" text="Add the first RA for this PCN and select the TI parts it covers." icon="lucide:shield-check" />
+        <EmptyState v-else title="No TI parts" text="Add affected TI parts before recording RA coverage." icon="lucide:shield-check" />
       </section>
 
       <section class="forms-section"><div class="section-title"><div><p class="eyebrow">Delta workflow</p><h2>Associated forms</h2></div><span class="section-count">{{ data.forms.length }}</span></div>

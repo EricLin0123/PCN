@@ -58,8 +58,10 @@ CREATE TABLE IF NOT EXISTS auth_session (
 
 CREATE INDEX IF NOT EXISTS idx_auth_session_expires ON auth_session(expires_at);
 
--- A CSC upload is a human claim and remains separate from imported Delta-form
--- coverage. Admin confirmation records that TI has independently verified it.
+-- A CSC upload record is sufficient to mark the CSC handoff as uploaded and
+-- remains separate from imported Delta-form coverage. The confirmation columns
+-- are retained only for compatibility with populated databases from the former
+-- two-step workflow; current application logic does not require or modify them.
 CREATE TABLE IF NOT EXISTS pcn_csc_upload (
   pcn_id INTEGER PRIMARY KEY REFERENCES pcn(id) ON DELETE CASCADE,
   apply_date TEXT NOT NULL CHECK (apply_date GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9]'),

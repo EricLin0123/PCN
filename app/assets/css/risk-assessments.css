@@ -78,6 +78,54 @@
   gap: 9px;
 }
 
+.ra-coverage-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1px;
+  padding: 1px;
+  overflow: hidden;
+  background: var(--line);
+}
+
+.ra-coverage-item {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 11px;
+  min-height: 58px;
+  padding: 11px 14px;
+  cursor: pointer;
+  background: var(--surface);
+}
+
+.ra-coverage-item:has(input:checked) {
+  background: #eefbf5;
+}
+
+.ra-coverage-item input {
+  width: 18px;
+  height: 18px;
+  accent-color: #167555;
+}
+
+.ra-coverage-item span {
+  display: grid;
+  gap: 3px;
+}
+
+.ra-coverage-item strong {
+  font-size: 12px;
+}
+
+.ra-coverage-item small {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.ra-coverage-item > svg {
+  color: #167555;
+}
+
 .ra-card {
   display: grid;
   grid-template-columns: 115px 1.25fr 1fr auto;

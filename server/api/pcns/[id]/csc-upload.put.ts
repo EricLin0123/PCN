@@ -7,8 +7,7 @@ export default defineEventHandler(async (event) => {
   const pcn = get<any>(`SELECT p.id, p.pcn_number_base, ops.upload_state
     FROM pcn p JOIN pcn_operational_status ops ON ops.pcn_id = p.id WHERE p.id = ?`, id)
   if (!pcn) throw createError({ statusCode: 404, statusMessage: 'PCN not found.' })
-  const existing = get<any>('SELECT confirmed_at FROM pcn_csc_upload WHERE pcn_id = ?', id)
-  if (existing?.confirmed_at) throw createError({ statusCode: 409, statusMessage: 'Revoke admin confirmation before changing the CSC upload details.' })
+  const existing = get('SELECT pcn_id FROM pcn_csc_upload WHERE pcn_id = ?', id)
   if (!existing && pcn.upload_state === 'ALL_UPLOADED') {
     throw createError({ statusCode: 409, statusMessage: 'This PCN is already fully represented in imported Delta data.' })
   }
@@ -40,6 +39,6 @@ export default defineEventHandler(async (event) => {
     if (String(error.message).includes('UNIQUE')) throw createError({ statusCode: 409, statusMessage: 'That FORM_NO or PCN_NO is already recorded.' })
     throw error
   }
-  return get(`SELECT pcn_id, apply_date, form_no, pcn_no, uploaded_at, confirmed_at
+  return get(`SELECT pcn_id, apply_date, form_no, pcn_no, uploaded_at
     FROM pcn_csc_upload WHERE pcn_id = ?`, id)
 })

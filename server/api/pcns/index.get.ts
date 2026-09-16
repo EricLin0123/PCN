@@ -64,8 +64,7 @@ export default defineEventHandler((event) => {
     where.push('ops.upload_state = ?')
     params.push(uploadState)
   }
-  if (cscStatus === 'CONFIRMED') where.push('cu.confirmed_at IS NOT NULL')
-  if (cscStatus === 'CSC_UPLOADED') where.push('cu.pcn_id IS NOT NULL AND cu.confirmed_at IS NULL')
+  if (cscStatus === 'CSC_UPLOADED' || cscStatus === 'CONFIRMED') where.push('cu.pcn_id IS NOT NULL')
   if (cscStatus === 'NA') where.push("cu.pcn_id IS NULL AND ops.upload_state = 'ALL_UPLOADED'")
   if (cscStatus === 'NOT_UPLOADED') where.push("cu.pcn_id IS NULL AND ops.upload_state <> 'ALL_UPLOADED'")
   if (riskAlignment) {
@@ -157,7 +156,6 @@ export default defineEventHandler((event) => {
       (SELECT group_concat(DISTINCT COALESCE(df.form_status, 'UNSPECIFIED')) FROM delta_form df WHERE df.pcn_id = p.id) AS statuses,
       pds.delta_status,
       CASE
-        WHEN cu.confirmed_at IS NOT NULL THEN 'CONFIRMED'
         WHEN cu.pcn_id IS NOT NULL THEN 'CSC_UPLOADED'
         WHEN ops.upload_state = 'ALL_UPLOADED' THEN 'NA'
         ELSE 'NOT_UPLOADED'

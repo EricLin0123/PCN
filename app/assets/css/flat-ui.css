@@ -293,6 +293,7 @@ textarea {
 }
 
 .state-all-uploaded,
+.state-csc-uploaded,
 .state-match {
   color: #000;
   background: #00ed4b;
@@ -729,6 +730,7 @@ td.fill-mismatch {
 }
 
 td.fill-all-uploaded,
+td.fill-csc-uploaded,
 td.fill-match,
 td.fill-parsed {
   color: #000;

@@ -151,7 +151,7 @@ const exportFill: Record<string, string> = {
   ALL_UPLOADED: 'FF00F04B', PARTLY_UPLOADED: 'FFFFFF00', NOT_UPLOADED: 'FFFF0000',
   COMPLETE: 'FF00F04B', PROCESSING: 'FFFFFF00', REJECT: 'FFFF0000', CANCEL: 'FF000000', MIXED: 'FFFF7900', BLANK: 'FFB8B8B8',
   MATCH: 'FF00F04B', MISMATCH: 'FFFF008C', NOT_ON_DELTA: 'FFB8B8B8', NOT_APPLICABLE: 'FFB8B8B8',
-  CSC_UPLOADED: 'FFFFFF00', CONFIRMED: 'FF00F04B',
+  CSC_UPLOADED: 'FF00F04B',
   FULL_RA: 'FF00F04B', PARTLY_MISS_RA: 'FFFFFF00', MISS_ALL_RA: 'FFFF0000', NA: 'FFB8B8B8',
   NOT_REQUESTED: 'FFFF0000', REQUEST_SENT: 'FFFFFF00', ACQUIRED: 'FF00F04B',
 }
@@ -262,7 +262,7 @@ async function exportToExcel() {
             <select v-else-if="column.key === 'ra'" v-model="raDocumentState" class="column-filter" @dragstart.prevent @change="applyFilters()"><option value="">(All)</option><option value="NOT_REQUESTED">Not requested</option><option value="REQUEST_SENT">Request sent</option><option value="ACQUIRED">Acquired</option><option value="NA">NA</option></select>
             <select v-else-if="column.key === 'ppap'" v-model="ppapDocumentState" class="column-filter" @dragstart.prevent @change="applyFilters()"><option value="">(All)</option><option value="NOT_REQUESTED">Not requested</option><option value="REQUEST_SENT">Request sent</option><option value="ACQUIRED">Acquired</option><option value="NA">NA</option></select>
             <select v-else-if="column.key === 'upload'" v-model="uploadState" class="column-filter" @dragstart.prevent @change="applyFilters()"><option value="">(All)</option><option value="ALL_UPLOADED">All uploaded</option><option value="PARTLY_UPLOADED">Partly uploaded</option><option value="NOT_UPLOADED">Not uploaded</option></select>
-            <select v-else-if="column.key === 'csc'" v-model="cscStatus" class="column-filter" @dragstart.prevent @change="applyFilters()"><option value="">(All)</option><option value="NA">NA</option><option value="NOT_UPLOADED">Not uploaded</option><option value="CSC_UPLOADED">CSC uploaded</option><option value="CONFIRMED">Confirmed uploaded</option></select>
+            <select v-else-if="column.key === 'csc'" v-model="cscStatus" class="column-filter" @dragstart.prevent @change="applyFilters()"><option value="">(All)</option><option value="NA">NA</option><option value="NOT_UPLOADED">Not uploaded</option><option value="CSC_UPLOADED">CSC uploaded</option></select>
             <select v-else-if="column.key === 'delta'" v-model="statusFilter" class="column-filter" @dragstart.prevent @change="applyFilters()"><option value="">(All)</option><option>CANCEL</option><option>PROCESSING</option><option>REJECT</option><option>COMPLETE</option><option>MIXED</option><option value="BLANK">Blank</option></select>
             <select v-else-if="column.key === 'alignment'" v-model="riskAlignment" class="column-filter" @dragstart.prevent @change="applyFilters()"><option value="">(All)</option><option value="MISMATCH">Mismatch</option><option value="MATCH">Match</option><option value="NOT_ON_DELTA">Not on Delta</option><option value="NOT_APPLICABLE">Not applicable</option></select>
             <span v-else class="column-period">{{ revenueFrom }}–{{ revenueTo }}</span>

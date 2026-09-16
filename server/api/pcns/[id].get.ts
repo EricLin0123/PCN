@@ -91,11 +91,9 @@ export default defineEventHandler((event) => {
   }
   const netRevenue = parts.reduce((sum: number, part: any) => sum + Number(part.net_revenue || 0), 0)
   const cscUpload = get<any>(`SELECT cu.pcn_id, cu.apply_date, cu.form_no, cu.pcn_no,
-      cu.uploaded_at, cu.confirmed_at, uploader.username AS uploaded_by,
-      confirmer.username AS confirmed_by
+      cu.uploaded_at, uploader.username AS uploaded_by
     FROM pcn_csc_upload cu
     LEFT JOIN app_user uploader ON uploader.id = cu.uploaded_by_user_id
-    LEFT JOIN app_user confirmer ON confirmer.id = cu.confirmed_by_user_id
     WHERE cu.pcn_id = ?`, id)
   return { pcn, parts, riskAssessments, ppaps, forms, cscUpload: cscUpload || null, revenueFrom, revenueTo, netRevenue }
 })
