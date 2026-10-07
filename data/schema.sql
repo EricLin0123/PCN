@@ -534,6 +534,7 @@ SELECT p.id AS pcn_id, coverage.ra_required_parts, coverage.ra_covered_parts,
   CASE
     WHEN coverage.ra_required_parts = 0 THEN 'NA'
     WHEN coverage.ra_covered_parts = coverage.ra_required_parts THEN 'ACQUIRED'
+    WHEN coverage.ra_covered_parts > 0 THEN 'PARTLY_ACQUIRED'
     WHEN EXISTS (SELECT 1 FROM pcn_document_request request WHERE request.pcn_id = p.id AND request.document_type = 'RA') THEN 'REQUEST_SENT'
     ELSE 'NOT_REQUESTED'
   END AS ra_document_state,
@@ -588,12 +589,23 @@ WITH ranked_attempts AS (
 SELECT
   p.id AS pcn_id,
   CASE
+    -- Imported terminal outcomes remain authoritative. A CSC upload records a
+    -- submission to Delta, so non-terminal or missing imported states are
+    -- treated as PROCESSING until Delta supplies a terminal outcome.
+    WHEN count(DISTINCT a.current_status) = 1
+      AND max(a.current_status) IN ('REJECT', 'COMPLETE') THEN max(a.current_status)
+    WHEN max(CASE WHEN a.current_status = 'REJECT' THEN 1 ELSE 0 END) = 1 THEN 'MIXED'
+    WHEN EXISTS (SELECT 1 FROM pcn_csc_upload upload WHERE upload.pcn_id = p.id) THEN 'PROCESSING'
     WHEN count(a.current_status) = 0 THEN 'BLANK'
     WHEN count(DISTINCT a.current_status) > 1 THEN 'MIXED'
     ELSE max(a.current_status)
   END AS delta_status,
   max(CASE WHEN a.current_status = 'REJECT' THEN 1 ELSE 0 END) AS has_reject,
-  max(CASE WHEN a.current_status = 'PROCESSING' THEN 1 ELSE 0 END) AS has_processing,
+  max(CASE
+    WHEN a.current_status = 'PROCESSING'
+      OR EXISTS (SELECT 1 FROM pcn_csc_upload upload WHERE upload.pcn_id = p.id)
+      THEN 1 ELSE 0
+  END) AS has_processing,
   max(CASE WHEN a.current_status = 'COMPLETE' THEN 1 ELSE 0 END) AS has_complete
 FROM pcn p
 LEFT JOIN current_attempts a ON a.pcn_id = p.id

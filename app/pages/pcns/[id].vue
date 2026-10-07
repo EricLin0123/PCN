@@ -17,6 +17,7 @@ const cscUploadState = computed(() => data.value?.cscUpload
   : data.value?.pcn.upload_state === 'ALL_UPLOADED' ? 'NA' : 'NOT_UPLOADED')
 const savingRaParts = ref<string[]>([])
 const newPpap = reactive({ ppap_number: '', filename: '', part_numbers: [] as string[] })
+const revenueRaParts = computed(() => (data.value?.parts || []).filter((part: any) => Number(part.net_revenue) > 0))
 const raRequests = computed(() => {
   if (!['MAJOR', 'MAJOR_D'].includes(data.value?.pcn.expected_risk)) return []
   const groups = new Map<string, any>()
@@ -156,7 +157,7 @@ async function deleteCscUpload() {
 
       <section class="detail-grid">
         <article class="panel facts-panel"><div class="panel-heading"><div><h2>Notification facts</h2><p>Authoritative PCN metadata</p></div><Icon name="lucide:file-text" /></div>
-          <dl class="facts"><div><dt>Notification date</dt><dd>{{ data.pcn.notification_date || 'Not set' }}</dd></div><div><dt>Change type</dt><dd>{{ data.pcn.change_type || 'Unspecified' }}</dd></div><div><dt>Expected risk</dt><dd><RiskBadge :risk="data.pcn.expected_risk" /></dd></div><div><dt>Manual override</dt><dd>{{ data.pcn.risk_override || 'None' }}</dd></div><div><dt>RA status</dt><dd><StateBadge :state="data.pcn.ra_document_state" /> <button v-if="data.pcn.ra_document_state === 'NOT_REQUESTED'" class="status-action" @click="setRequest('RA', true)">Mark request sent</button><button v-else-if="data.pcn.ra_document_state === 'REQUEST_SENT'" class="status-action" @click="setRequest('RA', false)">Undo request sent</button></dd></div><div><dt>PPAP status</dt><dd><StateBadge :state="data.pcn.ppap_document_state" /> <button v-if="data.pcn.ppap_document_state === 'NOT_REQUESTED'" class="status-action" @click="setRequest('PPAP', true)">Mark request sent</button><button v-else-if="data.pcn.ppap_document_state === 'REQUEST_SENT'" class="status-action" @click="setRequest('PPAP', false)">Undo request sent</button></dd></div><div><dt>Upload state</dt><dd><StateBadge :state="data.pcn.upload_state" /> <small class="coverage-count">{{ data.pcn.uploaded_parts }}/{{ data.pcn.delta_relevant_parts }} Delta parts</small></dd></div><div><dt>CSC upload</dt><dd><StateBadge :state="cscUploadState" /></dd></div><div><dt>Delta risk check</dt><dd><StateBadge :state="data.pcn.risk_alignment" /> <small v-if="data.pcn.delta_risks" class="coverage-count">Delta: {{ data.pcn.delta_risks }}</small></dd></div></dl>
+          <dl class="facts"><div><dt>Notification date</dt><dd>{{ data.pcn.notification_date || 'Not set' }}</dd></div><div><dt>Change type</dt><dd>{{ data.pcn.change_type || 'Unspecified' }}</dd></div><div><dt>Expected risk</dt><dd><RiskBadge :risk="data.pcn.expected_risk" /></dd></div><div><dt>Manual override</dt><dd>{{ data.pcn.risk_override || 'None' }}</dd></div><div><dt>RA status</dt><dd><StateBadge :state="data.pcn.ra_document_state" /> <small v-if="data.pcn.ra_document_state !== 'NA'" class="coverage-count">{{ data.pcn.ra_covered_parts }}/{{ data.pcn.ra_required_parts }} sold parts</small> <button v-if="data.pcn.ra_document_state === 'NOT_REQUESTED'" class="status-action" @click="setRequest('RA', true)">Mark request sent</button><button v-else-if="data.pcn.ra_document_state === 'REQUEST_SENT'" class="status-action" @click="setRequest('RA', false)">Undo request sent</button></dd></div><div><dt>PPAP status</dt><dd><StateBadge :state="data.pcn.ppap_document_state" /> <button v-if="data.pcn.ppap_document_state === 'NOT_REQUESTED'" class="status-action" @click="setRequest('PPAP', true)">Mark request sent</button><button v-else-if="data.pcn.ppap_document_state === 'REQUEST_SENT'" class="status-action" @click="setRequest('PPAP', false)">Undo request sent</button></dd></div><div><dt>Upload state</dt><dd><StateBadge :state="data.pcn.upload_state" /> <small class="coverage-count">{{ data.pcn.uploaded_parts }}/{{ data.pcn.delta_relevant_parts }} Delta parts</small></dd></div><div><dt>CSC upload</dt><dd><StateBadge :state="cscUploadState" /></dd></div><div><dt>Delta risk check</dt><dd><StateBadge :state="data.pcn.risk_alignment" /> <small v-if="data.pcn.delta_risks" class="coverage-count">Delta: {{ data.pcn.delta_risks }}</small></dd></div></dl>
           <div v-if="data.pcn.notes" class="notes"><strong>Internal notes</strong><p>{{ data.pcn.notes }}</p></div>
         </article>
         <article class="panel parts-panel"><div class="panel-heading"><div><h2>TI affected parts</h2><p>{{ data.parts.length }} authoritative relationships · Total NR {{ formatRevenue(data.netRevenue) }}</p></div><Icon name="lucide:cpu" /></div>
@@ -207,7 +208,7 @@ async function deleteCscUpload() {
       </section>
 
       <section id="risk-assessments" class="ra-section">
-        <div class="section-title"><div><p class="eyebrow">Risk coverage</p><h2>Risk assessments</h2></div><span class="section-count">{{ data.parts.filter((part: any) => part.has_ra).length }}/{{ data.parts.length }}</span></div>
+        <div class="section-title"><div><p class="eyebrow">Risk coverage</p><h2>Risk assessments</h2></div><span class="section-count">{{ revenueRaParts.filter((part: any) => part.has_ra).length }}/{{ revenueRaParts.length }}</span></div>
         <div v-if="raRequests.length" class="ra-request-list">
           <article v-for="request in raRequests" :key="request.sbe1_name || 'unassigned'" class="panel ra-request">
             <div><strong>{{ request.sbe1_name || 'SBE-1 not assigned' }}</strong><p>{{ request.parts.length }} part{{ request.parts.length === 1 ? '' : 's' }} still require RA</p></div>
@@ -215,8 +216,8 @@ async function deleteCscUpload() {
             <span v-else class="ra-contact-missing">Champion email not available</span>
           </article>
         </div>
-        <div v-if="data.parts.length" class="panel ra-coverage-list">
-          <label v-for="part in data.parts" :key="part.id" class="ra-coverage-item">
+        <div v-if="revenueRaParts.length" class="panel ra-coverage-list">
+          <label v-for="part in revenueRaParts" :key="part.id" class="ra-coverage-item">
             <input
               type="checkbox"
               :checked="Boolean(part.has_ra)"
@@ -228,7 +229,7 @@ async function deleteCscUpload() {
             <Icon v-else :name="part.has_ra ? 'lucide:circle-check' : 'lucide:circle'" />
           </label>
         </div>
-        <EmptyState v-else title="No TI parts" text="Add affected TI parts before recording RA coverage." icon="lucide:shield-check" />
+        <EmptyState v-else title="No parts with revenue" text="RA coverage only applies to parts with revenue in the selected window." icon="lucide:shield-check" />
       </section>
 
       <section class="forms-section"><div class="section-title"><div><p class="eyebrow">Delta workflow</p><h2>Associated forms</h2></div><span class="section-count">{{ data.forms.length }}</span></div>
