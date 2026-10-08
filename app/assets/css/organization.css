@@ -137,6 +137,18 @@
 .pending-related-list { display: flex; flex-wrap: wrap; gap: 5px 10px; }
 .pending-related-list a { white-space: nowrap; }
 .pending-detail > .empty-state { overflow: auto; }
+.ra-email-pipeline { width: min(1180px, 100%); max-height: calc(100vh - 60px); }
+.ra-email-summary { padding: 12px 18px; border-bottom: 1px solid #8f9baa; background: #f3f4f6; }
+.ra-email-pipeline > .alert { margin: 12px 18px 0; }
+.ra-email-layout { display: grid; grid-template-columns: 260px minmax(0, 1fr); min-height: 0; overflow: hidden; }
+.ra-email-recipients { overflow: auto; border-right: 2px solid #000; background: #e7ebf0; }
+.ra-email-recipients button { display: flex; flex-direction: column; gap: 4px; width: 100%; padding: 12px; border: 0; border-bottom: 1px solid #aab2bd; background: transparent; text-align: left; }
+.ra-email-recipients button:hover,.ra-email-recipients button.active { background: #fff3b0; box-shadow: inset 4px 0 #000; }
+.ra-email-recipients small { color: #596274; }
+.ra-email-content { min-width: 0; padding: 16px; overflow: auto; }
+.ra-email-content label { display: grid; grid-template-columns: 70px minmax(0, 1fr); align-items: center; margin-bottom: 8px; font-weight: 800; }
+.ra-email-content input { width: 100%; padding: 8px; border: 1px solid #8f9baa; background: #fff; }
+.ra-email-html { margin-top: 14px; padding: 18px; border: 1px solid #8f9baa; background: #fff; }
 
 @media(max-width:760px) {
   .organization-metrics { grid-template-columns: repeat(2, 1fr); }
@@ -153,4 +165,6 @@
   .champion-email-editor input { width: 100%; }
   .pending-detail-backdrop { padding: 10px; }
   .pending-detail { max-height: calc(100vh - 20px); }
+  .ra-email-layout { grid-template-columns: 1fr; overflow: auto; }
+  .ra-email-recipients { max-height: 180px; border-right: 0; border-bottom: 2px solid #000; }
 }

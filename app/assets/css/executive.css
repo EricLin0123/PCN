@@ -46,4 +46,9 @@
 .executive-black { background: #000 !important; color: #fff; }
 .executive-magenta { background: #ff008c !important; color: #fff; }
 .clear-filter { margin-left: 8px; padding: 2px 5px; background: #fff; border: 1px solid #657484; color: #000; font-weight: 700; }
+.executive-email-preview { width: min(1180px,100%); max-height: calc(100vh - 60px); }
+.executive-email-fields { display: grid; gap: 10px; padding: 16px 20px; border-bottom: 1px solid #aeb8c5; }
+.executive-email-fields label { display: grid; grid-template-columns: 70px minmax(0,1fr); align-items: center; margin: 0; }
+.executive-email-meta { padding: 10px 20px; background: #e8edf3; border-bottom: 1px solid #aeb8c5; font-size: 12px; }
+.executive-email-html { padding: 20px; overflow: auto; background: #fff; }
 @media(max-width:760px){.sidebar nav{grid-template-columns:repeat(4,1fr)}.executive-chart-canvas{height:340px}.executive-sheet,.exception-sheet{overflow-x:auto}.executive-sheet table,.exception-sheet table{min-width:900px}}

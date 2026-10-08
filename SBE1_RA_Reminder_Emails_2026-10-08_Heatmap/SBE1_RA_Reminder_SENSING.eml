@@ -1,0 +1,89 @@
+To: rye@ti.com
+Subject: [Action required] 23 RA parts pending for SENSING
+MIME-Version: 1.0
+Content-Type: text/html; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+<div style="font-family:Arial,sans-serif;font-size:14px;line-height:1.5;color:#111827;max-width:900px"><p>Dear <strong>SENSING</strong> team,</p><p>CSC's current records show <strong style="color:#b91c1c">23 parts</strong> across <strong>7 PCNs</strong> still pending risk assessment (RA) from your SBE-1. Please provide the outstanding RAs as soon as possible.</p><h3>Current pending RA overview — all SBE-1 teams</h3><table role="presentation" style="width:100%;border-collapse:collapse;font-family:Arial,sans-serif;font-size:14px;color:#111827">
+    <thead><tr style="background:#111827;color:#fff"><th style="padding:8px">Rank</th><th style="padding:8px;text-align:left">SBE-1</th><th style="padding:8px;text-align:right">Pending RA parts</th><th style="padding:8px;text-align:right">Affected PCNs</th></tr></thead>
+    <tbody><tr style="background:hsl(0 78% 80%)">
+    <td style="border:1px solid #9ca3af;padding:8px;text-align:center">1</td>
+    <td style="border:1px solid #9ca3af;padding:8px"><strong>INT</strong></td>
+    <td style="border:1px solid #9ca3af;padding:8px;text-align:right;font-weight:700">144</td>
+    <td style="border:1px solid #9ca3af;padding:8px;text-align:right">71</td>
+  </tr><tr style="background:hsl(76.66666666666666 78% 80%)">
+    <td style="border:1px solid #9ca3af;padding:8px;text-align:center">2</td>
+    <td style="border:1px solid #9ca3af;padding:8px"><strong>LP</strong></td>
+    <td style="border:1px solid #9ca3af;padding:8px;text-align:right;font-weight:700">52</td>
+    <td style="border:1px solid #9ca3af;padding:8px;text-align:right">35</td>
+  </tr><tr style="background:hsl(82.5 78% 80%)">
+    <td style="border:1px solid #9ca3af;padding:8px;text-align:center">3</td>
+    <td style="border:1px solid #9ca3af;padding:8px"><strong>LAMPS</strong></td>
+    <td style="border:1px solid #9ca3af;padding:8px;text-align:right;font-weight:700">45</td>
+    <td style="border:1px solid #9ca3af;padding:8px;text-align:right">26</td>
+  </tr><tr style="background:hsl(100.83333333333333 78% 80%)">
+    <td style="border:3px solid #111827;padding:8px;text-align:center">4</td>
+    <td style="border:3px solid #111827;padding:8px"><strong>SENSING</strong></td>
+    <td style="border:3px solid #111827;padding:8px;text-align:right;font-weight:700">23</td>
+    <td style="border:3px solid #111827;padding:8px;text-align:right">7</td>
+  </tr><tr style="background:hsl(113.33333333333333 78% 80%)">
+    <td style="border:1px solid #9ca3af;padding:8px;text-align:center">5</td>
+    <td style="border:1px solid #9ca3af;padding:8px"><strong>MSP</strong></td>
+    <td style="border:1px solid #9ca3af;padding:8px;text-align:right;font-weight:700">8</td>
+    <td style="border:1px solid #9ca3af;padding:8px;text-align:right">3</td>
+  </tr><tr style="background:hsl(115 78% 80%)">
+    <td style="border:1px solid #9ca3af;padding:8px;text-align:center">6</td>
+    <td style="border:1px solid #9ca3af;padding:8px"><strong>ASM</strong></td>
+    <td style="border:1px solid #9ca3af;padding:8px;text-align:right;font-weight:700">6</td>
+    <td style="border:1px solid #9ca3af;padding:8px;text-align:right">5</td>
+  </tr><tr style="background:hsl(118.33333333333334 78% 80%)">
+    <td style="border:1px solid #9ca3af;padding:8px;text-align:center">7</td>
+    <td style="border:1px solid #9ca3af;padding:8px"><strong>PROCESSORS</strong></td>
+    <td style="border:1px solid #9ca3af;padding:8px;text-align:right;font-weight:700">2</td>
+    <td style="border:1px solid #9ca3af;padding:8px;text-align:right">1</td>
+  </tr><tr style="background:hsl(119.16666666666667 78% 80%)">
+    <td style="border:1px solid #9ca3af;padding:8px;text-align:center">8</td>
+    <td style="border:1px solid #9ca3af;padding:8px"><strong>CONNECT</strong></td>
+    <td style="border:1px solid #9ca3af;padding:8px;text-align:right;font-weight:700">1</td>
+    <td style="border:1px solid #9ca3af;padding:8px;text-align:right">1</td>
+  </tr><tr style="background:hsl(119.16666666666667 78% 80%)">
+    <td style="border:1px solid #9ca3af;padding:8px;text-align:center">9</td>
+    <td style="border:1px solid #9ca3af;padding:8px"><strong>IPP</strong></td>
+    <td style="border:1px solid #9ca3af;padding:8px;text-align:right;font-weight:700">1</td>
+    <td style="border:1px solid #9ca3af;padding:8px;text-align:right">1</td>
+  </tr><tr style="background:hsl(119.16666666666667 78% 80%)">
+    <td style="border:1px solid #9ca3af;padding:8px;text-align:center">10</td>
+    <td style="border:1px solid #9ca3af;padding:8px"><strong>MD</strong></td>
+    <td style="border:1px solid #9ca3af;padding:8px;text-align:right;font-weight:700">1</td>
+    <td style="border:1px solid #9ca3af;padding:8px;text-align:right">1</td>
+  </tr><tr style="background:#b7e4c7">
+    <td style="border:1px solid #9ca3af;padding:8px;text-align:center">11</td>
+    <td style="border:1px solid #9ca3af;padding:8px"><strong>AUDIO</strong></td>
+    <td style="border:1px solid #9ca3af;padding:8px;text-align:right;font-weight:700">0</td>
+    <td style="border:1px solid #9ca3af;padding:8px;text-align:right">0</td>
+  </tr><tr style="background:#b7e4c7">
+    <td style="border:1px solid #9ca3af;padding:8px;text-align:center">12</td>
+    <td style="border:1px solid #9ca3af;padding:8px"><strong>BMS</strong></td>
+    <td style="border:1px solid #9ca3af;padding:8px;text-align:right;font-weight:700">0</td>
+    <td style="border:1px solid #9ca3af;padding:8px;text-align:right">0</td>
+  </tr><tr style="background:#b7e4c7">
+    <td style="border:1px solid #9ca3af;padding:8px;text-align:center">13</td>
+    <td style="border:1px solid #9ca3af;padding:8px"><strong>DCC</strong></td>
+    <td style="border:1px solid #9ca3af;padding:8px;text-align:right;font-weight:700">0</td>
+    <td style="border:1px solid #9ca3af;padding:8px;text-align:right">0</td>
+  </tr><tr style="background:#b7e4c7">
+    <td style="border:1px solid #9ca3af;padding:8px;text-align:center">14</td>
+    <td style="border:1px solid #9ca3af;padding:8px"><strong>HVP</strong></td>
+    <td style="border:1px solid #9ca3af;padding:8px;text-align:right;font-weight:700">0</td>
+    <td style="border:1px solid #9ca3af;padding:8px;text-align:right">0</td>
+  </tr><tr style="background:#b7e4c7">
+    <td style="border:1px solid #9ca3af;padding:8px;text-align:center">15</td>
+    <td style="border:1px solid #9ca3af;padding:8px"><strong>LED</strong></td>
+    <td style="border:1px solid #9ca3af;padding:8px;text-align:right;font-weight:700">0</td>
+    <td style="border:1px solid #9ca3af;padding:8px;text-align:right">0</td>
+  </tr><tr style="background:#b7e4c7">
+    <td style="border:1px solid #9ca3af;padding:8px;text-align:center">16</td>
+    <td style="border:1px solid #9ca3af;padding:8px"><strong>SR</strong></td>
+    <td style="border:1px solid #9ca3af;padding:8px;text-align:right;font-weight:700">0</td>
+    <td style="border:1px solid #9ca3af;padding:8px;text-align:right">0</td>
+  </tr></tbody></table><h3>Your pending items</h3><table role="presentation" style="width:100%;border-collapse:collapse;font-family:Arial,sans-serif;font-size:14px"><thead><tr style="background:#111827;color:#fff"><th style="padding:8px;text-align:left">TI Part Number</th><th style="padding:8px;text-align:left">TI PCN Number</th><th style="padding:8px;text-align:left">Corresponding PCN Title</th></tr></thead><tbody><tr><td style="border:1px solid #9ca3af;padding:8px"><strong>TMP6131QDECRQ1</strong></td><td style="border:1px solid #9ca3af;padding:8px">20231204003</td><td style="border:1px solid #9ca3af;padding:8px">Datasheet for TMP61-Q1</td></tr><tr><td style="border:1px solid #9ca3af;padding:8px"><strong>TMCS1100A1QDR</strong></td><td style="border:1px solid #9ca3af;padding:8px">20251015004</td><td style="border:1px solid #9ca3af;padding:8px">Datasheet for TMCS1101-Q1, TMCS1101, TMCS1100-Q1, TMCS1100, INA700, INA20x-Q1, DRV425</td></tr><tr><td style="border:1px solid #9ca3af;padding:8px"><strong>TMCS1126BDAQDVGRQ1</strong></td><td style="border:1px solid #9ca3af;padding:8px">20260306001</td><td style="border:1px solid #9ca3af;padding:8px">Datasheet for TMCS1126-Q1</td></tr><tr><td style="border:1px solid #9ca3af;padding:8px"><strong>INA210AIDCKR</strong></td><td style="border:1px solid #9ca3af;padding:8px">20260522001</td><td style="border:1px solid #9ca3af;padding:8px">Qualification of RFAB as an additional Fab site and TI Chengdu as additional Assembly/Test site options for select devices</td></tr><tr><td style="border:1px solid #9ca3af;padding:8px"><strong>INA210BIDCKR</strong></td><td style="border:1px solid #9ca3af;padding:8px">20260522001</td><td style="border:1px solid #9ca3af;padding:8px">Qualification of RFAB as an additional Fab site and TI Chengdu as additional Assembly/Test site options for select devices</td></tr><tr><td style="border:1px solid #9ca3af;padding:8px"><strong>INA210CQDCKRQ1</strong></td><td style="border:1px solid #9ca3af;padding:8px">20260522001</td><td style="border:1px solid #9ca3af;padding:8px">Qualification of RFAB as an additional Fab site and TI Chengdu as additional Assembly/Test site options for select devices</td></tr><tr><td style="border:1px solid #9ca3af;padding:8px"><strong>INA211BIDCKR</strong></td><td style="border:1px solid #9ca3af;padding:8px">20260522001</td><td style="border:1px solid #9ca3af;padding:8px">Qualification of RFAB as an additional Fab site and TI Chengdu as additional Assembly/Test site options for select devices</td></tr><tr><td style="border:1px solid #9ca3af;padding:8px"><strong>INA211BIDCKT</strong></td><td style="border:1px solid #9ca3af;padding:8px">20260522001</td><td style="border:1px solid #9ca3af;padding:8px">Qualification of RFAB as an additional Fab site and TI Chengdu as additional Assembly/Test site options for select devices</td></tr><tr><td style="border:1px solid #9ca3af;padding:8px"><strong>INA213AIDCKT</strong></td><td style="border:1px solid #9ca3af;padding:8px">20260522001</td><td style="border:1px solid #9ca3af;padding:8px">Qualification of RFAB as an additional Fab site and TI Chengdu as additional Assembly/Test site options for select devices</td></tr><tr><td style="border:1px solid #9ca3af;padding:8px"><strong>INA213BIDCKR</strong></td><td style="border:1px solid #9ca3af;padding:8px">20260522001</td><td style="border:1px solid #9ca3af;padding:8px">Qualification of RFAB as an additional Fab site and TI Chengdu as additional Assembly/Test site options for select devices</td></tr><tr><td style="border:1px solid #9ca3af;padding:8px"><strong>INA214AIDCKR</strong></td><td style="border:1px solid #9ca3af;padding:8px">20260522001</td><td style="border:1px solid #9ca3af;padding:8px">Qualification of RFAB as an additional Fab site and TI Chengdu as additional Assembly/Test site options for select devices</td></tr><tr><td style="border:1px solid #9ca3af;padding:8px"><strong>INA214BIDCKR</strong></td><td style="border:1px solid #9ca3af;padding:8px">20260522001</td><td style="border:1px solid #9ca3af;padding:8px">Qualification of RFAB as an additional Fab site and TI Chengdu as additional Assembly/Test site options for select devices</td></tr><tr><td style="border:1px solid #9ca3af;padding:8px"><strong>INA214CQDCKRQ1</strong></td><td style="border:1px solid #9ca3af;padding:8px">20260522001</td><td style="border:1px solid #9ca3af;padding:8px">Qualification of RFAB as an additional Fab site and TI Chengdu as additional Assembly/Test site options for select devices</td></tr><tr><td style="border:1px solid #9ca3af;padding:8px"><strong>TMCS1133B8AQDVGR</strong></td><td style="border:1px solid #9ca3af;padding:8px">20260602000</td><td style="border:1px solid #9ca3af;padding:8px">Datasheet for TMCS1123, TMCS1126, and TMCS1133</td></tr><tr><td style="border:1px solid #9ca3af;padding:8px"><strong>TMCS1133C1AQDVGR</strong></td><td style="border:1px solid #9ca3af;padding:8px">20260602000</td><td style="border:1px solid #9ca3af;padding:8px">Datasheet for TMCS1123, TMCS1126, and TMCS1133</td></tr><tr><td style="border:1px solid #9ca3af;padding:8px"><strong>TMCS1133C5AQDVGR</strong></td><td style="border:1px solid #9ca3af;padding:8px">20260602000</td><td style="border:1px solid #9ca3af;padding:8px">Datasheet for TMCS1123, TMCS1126, and TMCS1133</td></tr><tr><td style="border:1px solid #9ca3af;padding:8px"><strong>TMCS1133C9AQDVGR</strong></td><td style="border:1px solid #9ca3af;padding:8px">20260602000</td><td style="border:1px solid #9ca3af;padding:8px">Datasheet for TMCS1123, TMCS1126, and TMCS1133</td></tr><tr><td style="border:1px solid #9ca3af;padding:8px"><strong>INA212AIDCKR</strong></td><td style="border:1px solid #9ca3af;padding:8px">20260609002</td><td style="border:1px solid #9ca3af;padding:8px">Qualification of AIZU/RFAB as an additional Fab site and TI Chengdu as additional Assembly/Test site options for select devices</td></tr><tr><td style="border:1px solid #9ca3af;padding:8px"><strong>INA213AQDCKRQ1</strong></td><td style="border:1px solid #9ca3af;padding:8px">20260609002</td><td style="border:1px solid #9ca3af;padding:8px">Qualification of AIZU/RFAB as an additional Fab site and TI Chengdu as additional Assembly/Test site options for select devices</td></tr><tr><td style="border:1px solid #9ca3af;padding:8px"><strong>INA214AQDCKRQ1</strong></td><td style="border:1px solid #9ca3af;padding:8px">20260609002</td><td style="border:1px solid #9ca3af;padding:8px">Qualification of AIZU/RFAB as an additional Fab site and TI Chengdu as additional Assembly/Test site options for select devices</td></tr><tr><td style="border:1px solid #9ca3af;padding:8px"><strong>TMCS1126A8AQDVGRQ1</strong></td><td style="border:1px solid #9ca3af;padding:8px">20260612001</td><td style="border:1px solid #9ca3af;padding:8px">Datasheet for TMCS1133-Q1, TMCS1126-Q1, and TMCS1123-Q1</td></tr><tr><td style="border:1px solid #9ca3af;padding:8px"><strong>TMCS1126B9AQDVGRQ1</strong></td><td style="border:1px solid #9ca3af;padding:8px">20260612001</td><td style="border:1px solid #9ca3af;padding:8px">Datasheet for TMCS1133-Q1, TMCS1126-Q1, and TMCS1123-Q1</td></tr><tr><td style="border:1px solid #9ca3af;padding:8px"><strong>TMCS1126BDAQDVGRQ1</strong></td><td style="border:1px solid #9ca3af;padding:8px">20260612001</td><td style="border:1px solid #9ca3af;padding:8px">Datasheet for TMCS1133-Q1, TMCS1126-Q1, and TMCS1123-Q1</td></tr><tr><td style="border:1px solid #9ca3af;padding:8px"><strong>TMCS1133B1AQDVGRQ1</strong></td><td style="border:1px solid #9ca3af;padding:8px">20260612001</td><td style="border:1px solid #9ca3af;padding:8px">Datasheet for TMCS1133-Q1, TMCS1126-Q1, and TMCS1123-Q1</td></tr></tbody></table><p style="color:#4b5563;font-size:12px">These counts are generated from the live PCN database and change when CSC records an RA as acquired.</p><p>Thank you,<br>CSC</p></div>

@@ -8,6 +8,10 @@ const messageType = ref('success')
 const pendingDetail = ref<any>(null)
 const pendingDetailLoading = ref(false)
 const pendingDetailError = ref('')
+const emailDrafts = ref<any>(null)
+const selectedEmail = ref<any>(null)
+const emailDraftsLoading = ref(false)
+const emailCopyStatus = ref('')
 const pendingMetricKeys = [
   'pendingRaPartCount',
   'pendingRaPcnCount',
@@ -93,6 +97,35 @@ function closePendingDetail() {
   pendingDetailError.value = ''
 }
 
+async function generateRaReminderEmails() {
+  emailDraftsLoading.value = true
+  try {
+    emailDrafts.value = await $fetch('/api/emails/sbe1-ra-reminders')
+    selectedEmail.value = emailDrafts.value.emails[0] || null
+    emailCopyStatus.value = ''
+  } catch (generateError: any) {
+    notify(generateError.data?.statusMessage || 'Unable to generate RA reminder emails.', 'error')
+  } finally {
+    emailDraftsLoading.value = false
+  }
+}
+
+function closeEmailDrafts() {
+  emailDrafts.value = null
+  selectedEmail.value = null
+  emailCopyStatus.value = ''
+}
+
+async function copyEmailDraft() {
+  if (!selectedEmail.value) return
+  try {
+    await navigator.clipboard.writeText(`To: ${selectedEmail.value.to}\nSubject: ${selectedEmail.value.subject}\n\n${selectedEmail.value.text}`)
+    emailCopyStatus.value = 'Email copied to clipboard.'
+  } catch {
+    emailCopyStatus.value = 'Copy was blocked. Copy the email manually.'
+  }
+}
+
 function pendingDetailTitle() {
   if (!pendingDetail.value) return ''
   const unit = pendingDetail.value.groupBy === 'part' ? 'parts' : 'PCNs'
@@ -100,7 +133,9 @@ function pendingDetailTitle() {
 }
 
 function closePendingDetailOnEscape(event: KeyboardEvent) {
-  if (event.key === 'Escape' && pendingDetail.value) closePendingDetail()
+  if (event.key !== 'Escape') return
+  if (emailDrafts.value) closeEmailDrafts()
+  else if (pendingDetail.value) closePendingDetail()
 }
 
 onMounted(() => window.addEventListener('keydown', closePendingDetailOnEscape))
@@ -115,6 +150,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', closePendingDetailOn
         <h1>SBE</h1>
         <p>SBE hierarchy, SBE-1 champions, and SBE-2 teams.</p>
       </div>
+      <div class="page-actions"><button class="button primary" type="button" :disabled="emailDraftsLoading" @click="generateRaReminderEmails"><Icon :name="emailDraftsLoading ? 'lucide:loader-circle' : 'lucide:mails'" :class="{ spin: emailDraftsLoading }" /> {{ emailDraftsLoading ? 'Generating…' : 'Generate RA reminder emails' }}</button></div>
     </header>
     <Transition name="toast"><div v-if="message" class="toast" :class="messageType"><Icon :name="messageType === 'success' ? 'lucide:circle-check' : 'lucide:circle-alert'" />{{ message }}</div></Transition>
 
@@ -207,6 +243,20 @@ onBeforeUnmount(() => window.removeEventListener('keydown', closePendingDetailOn
           </table>
         </div>
         <EmptyState v-else title="No pending records" :text="`No pending ${pendingDetail.documentType} ${pendingDetail.groupBy === 'part' ? 'parts' : 'PCNs'} belong to ${pendingDetail.sbe1.name}.`" icon="lucide:circle-check" />
+      </section>
+    </div>
+
+    <div v-if="emailDrafts" class="email-preview-backdrop" @click.self="closeEmailDrafts">
+      <section class="email-preview ra-email-pipeline" role="dialog" aria-modal="true" aria-labelledby="ra-email-title">
+        <header><div><p class="eyebrow">Live database drafts</p><h2 id="ra-email-title">SBE-1 RA reminders</h2></div><button class="icon-button" type="button" title="Close" aria-label="Close email drafts" @click="closeEmailDrafts"><Icon name="lucide:x" /></button></header>
+        <div class="ra-email-summary"><strong>{{ emailDrafts.emails.length }}</strong> email draft{{ emailDrafts.emails.length === 1 ? '' : 's' }} · <strong>{{ emailDrafts.totalPendingParts }}</strong> pending parts · generated {{ new Date(emailDrafts.generatedAt).toLocaleString() }}</div>
+        <div v-if="emailDrafts.missingChampionEmails.length" class="alert error">No email address for {{ emailDrafts.missingChampionEmails.map((item: any) => `${item.sbe1Name} (${item.pendingPartCount})`).join(', ') }}. No draft was created for these teams.</div>
+        <div v-if="emailDrafts.emails.length" class="ra-email-layout">
+          <nav class="ra-email-recipients" aria-label="Generated email drafts"><button v-for="email in emailDrafts.emails" :key="email.sbe1Id" type="button" :class="{ active: selectedEmail?.sbe1Id === email.sbe1Id }" @click="selectedEmail = email; emailCopyStatus = ''"><strong>{{ email.sbe1Name }}</strong><small>{{ email.pendingPartCount }} parts · {{ email.pendingPcnCount }} PCNs</small></button></nav>
+          <div v-if="selectedEmail" class="ra-email-content"><label><span>To</span><input :value="selectedEmail.to" readonly /></label><label><span>Subject</span><input :value="selectedEmail.subject" readonly /></label><div class="ra-email-html" v-html="selectedEmail.html" /></div>
+        </div>
+        <EmptyState v-else title="No reminder emails needed" text="There are no pending RA parts assigned to an SBE-1 champion with an email address." icon="lucide:circle-check" />
+        <footer><span class="email-copy-status" aria-live="polite">{{ emailCopyStatus }}</span><div><button class="button secondary" type="button" @click="closeEmailDrafts">Close</button><button v-if="selectedEmail" class="button primary" type="button" @click="copyEmailDraft"><Icon name="lucide:copy" /> Copy email</button></div></footer>
       </section>
     </div>
   </div>
